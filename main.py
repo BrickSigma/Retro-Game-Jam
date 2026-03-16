@@ -3,8 +3,7 @@ import asyncio
 
 from src.constants import *
 import src.tileset as Tileset
-from src.scenes.menu import Menu
-from src.scenes.scene import SceneState
+from src.scenes import *
 
 """
 The game is wrapped in the `main` function below which has also been made asynchronous.
@@ -26,8 +25,23 @@ async def main():
 
     running = True
     while running:
-        if current_scene.update() == SceneState.QUIT:
-            running = False
+        # Scene state manager
+        match current_scene.update():
+            case SceneState.QUIT:
+                running = False
+            case SceneState.MENU:
+                current_scene = Menu(canvas)
+            case SceneState.CONTROLS:
+                current_scene = Controls(canvas)
+            case SceneState.GAME:
+                current_scene = Game(canvas)
+            case SceneState.CREDITS:
+                current_scene = Credits(canvas)
+            case SceneState.NO_CHANGE:
+                pass
+            case _:
+                raise Exception("Unknown state!")
+            
 
         # Update the screen (flip() swaps the backbuffer and framebuffer)
         pygame.transform.scale(canvas, WINDOW_SIZE, screen)

@@ -4,10 +4,12 @@ import pygame
 
 @unique
 class SceneState(Enum):
+    NO_CHANGE = auto()
     MENU = auto()
+    CONTROLS = auto()
     GAME = auto()
     CREDITS = auto()
-    QUIT = auto()  
+    QUIT = auto()
     """Quit the game"""
 
 class Scene(ABC):
