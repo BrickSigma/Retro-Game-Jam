@@ -9,7 +9,7 @@ import pygame
 class Controls(Scene):
     def __init__(self, surface):
         super().__init__(surface)
-        self.text = Tileset.get_string("WASD/Arrow keys to move")
+        self.text = Tileset.render_string("WASD/Arrow keys to move")
 
     def update(self):
         next_state = SceneState.NO_CHANGE

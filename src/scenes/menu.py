@@ -10,9 +10,9 @@ class Menu(Scene):
 
     def __init__(self, surface):
         super().__init__(surface)
-        self.title = Tileset.get_string("Retro Game Jam")
-        self.start_button = Tileset.get_string("Start")
-        self.controls_button = Tileset.get_string("Controls")
+        self.title = Tileset.render_string("Retro Game Jam")
+        self.start_button = Tileset.render_string("Start")
+        self.controls_button = Tileset.render_string("Controls")
         self.arrow = Tileset.get_tile(39)
         self.selected = 0
         self.counter = 0

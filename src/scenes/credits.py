@@ -9,7 +9,7 @@ import pygame
 class Credits(Scene):
     def __init__(self, surface):
         super().__init__(surface)
-        self.text = Tileset.get_string("Credits")
+        self.text = Tileset.render_string("Credits")
 
     def update(self):
         next_state = SceneState.NO_CHANGE

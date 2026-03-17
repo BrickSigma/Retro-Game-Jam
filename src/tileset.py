@@ -51,7 +51,7 @@ def get_char(char: str) -> pygame.Surface:
     
     return get_tile(_chars.index(char))
 
-def get_string(string: str) -> pygame.Surface:
+def render_string(string: str) -> pygame.Surface:
     """
     Render a string as a set of tiles
     """
