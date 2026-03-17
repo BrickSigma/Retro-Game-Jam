@@ -44,7 +44,7 @@ class Menu(Scene):
                             else:
                                 next_state = SceneState.CONTROLS
 
-        self.surface.fill((255, 255, 255))
+        self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.title, 9, 6)
         Tileset.render_tile(self.surface, self.start_button, 12, 20)
         Tileset.render_tile(self.surface, self.controls_button, 12, 22)
@@ -52,7 +52,7 @@ class Menu(Scene):
         for i in range(0, 4, 2):
             arrow = self.arrow
             if i/2 == self.selected:
-                arrow = Tileset.swap_color(arrow, (0, 0, 0), self.COLORS[self.color])
+                arrow = Tileset.change_letter_color(arrow, self.COLORS[self.color])
             Tileset.render_tile(self.surface, arrow, 10, 20 + i)
 
         self.counter += 1

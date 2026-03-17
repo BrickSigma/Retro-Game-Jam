@@ -1,7 +1,7 @@
 """
 Module to handle the tileset and grab individual tiles
 """
-
+from enum import Enum, unique
 import pygame
 
 TILE_SIZE = 8
@@ -14,6 +14,20 @@ _chars = [
 
 _unused_color = (254, 254, 254)
 """Unused color used for color mapping functions"""
+
+@unique
+class TileType(Enum):
+    ARROW = 39
+    BRICK = 40
+    BROKEN_BRICK = 41
+    SOLID_BRICK = 42
+    CAVE_TOP_LEFT = 43
+    CAVE_TOP_RIGHT = 44
+    CAVE_BOTTOM_LEFT = 45
+    CAVE_BOTTOM_RIGHT = 46
+    CAVE_DETAIL = 47
+
+
 
 def init():
     global tileset
@@ -85,4 +99,4 @@ def change_letter_color(tile: pygame.Surface, color: tuple[int, int, int]) -> py
 
     This essentially converts any black pixels to the new color.
     """
-    return swap_color(tile, (0, 0, 0), color)
+    return swap_color(tile, (255, 255, 255), color)

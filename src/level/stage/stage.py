@@ -64,7 +64,7 @@ class Stage:
                         case pygame.K_BACKSPACE:
                             next_state = StageState.RESTART_LEVEL
 
-        self.surface.fill((255, 255, 255))
+        self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.stage_banner, 0, 0)
 
         return next_state
