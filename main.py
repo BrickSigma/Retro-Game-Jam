@@ -21,7 +21,8 @@ async def main():
 
     Tileset.init()
 
-    current_scene = Menu(canvas)
+    # current_scene = Menu(canvas)
+    current_scene = Game(canvas)
 
     running = True
     while running:
