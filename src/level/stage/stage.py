@@ -30,6 +30,9 @@ class StageState(Enum):
     QUIT = auto()
 
 class Stage:
+    WIDTH = 32*3
+    HEIGHT = 30*2
+
     def __init__(self, surface: pygame.Surface, stage_no: tuple[int, int]):
         self.surface = surface
         self.stage_no = stage_no
@@ -44,6 +47,10 @@ class Stage:
         self.entities = None
 
         self.stage_banner = Tileset.render_string(f"Stage: {stage_no[0]}-{stage_no[1]}")
+
+    def load_stage(self):
+        """Load the stage data from its file"""
+        pass
 
     def restart(self):
         """Restart the stage"""
@@ -66,5 +73,7 @@ class Stage:
 
         self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.stage_banner, 0, 0)
+
+        pygame.draw.rect(self.surface, (255, 0, 0), (0, 3*8, 32*8, 27*8))
 
         return next_state

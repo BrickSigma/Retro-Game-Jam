@@ -17,6 +17,7 @@ _unused_color = (254, 254, 254)
 
 @unique
 class TileType(Enum):
+    NONE = None
     ARROW = 39
     BRICK = 40
     BROKEN_BRICK = 41
@@ -26,8 +27,18 @@ class TileType(Enum):
     CAVE_BOTTOM_LEFT = 45
     CAVE_BOTTOM_RIGHT = 46
     CAVE_DETAIL = 47
-
-
+    CAVE_FLOOR = 48
+    CAVE_ROOF = 49
+    CAVE_WALL_LEFT = 50
+    CAVE_WALL_RIGHT = 51
+    RAMP_RIGHT = 52
+    RAMP_LEFT = 53
+    CAVE_CORNER_LEFT = 54
+    CAVE_CORNER_RIGHT = 55
+    PILLAR_TOP = 56
+    PILLAR_BOTTOM = 57
+    PILLAR_MIDDLE = 58
+    LADDER = 59
 
 def init():
     global tileset
