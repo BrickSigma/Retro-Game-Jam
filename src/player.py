@@ -3,7 +3,7 @@ import pygame
 from math import sqrt
 
 from src.camera import Camera
-from src.tileset import TILE_SIZE
+from src.tileset import TILE_SIZE, TileType
 from src.tiledmap import Tiles
 
 @unique
@@ -16,10 +16,10 @@ def collision_test(rect: pygame.Rect, tiles: Tiles) -> list[pygame.Rect]:
     hit_list = []
     for y in range(0, len(tiles)):
         for x in range(0, len(tiles[y])):
-            if tiles[y][x] == -1:
+            if tiles[y][x].type == TileType.NONE:
                 continue
 
-            tile_rect = pygame.Rect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            tile_rect = tiles[y][x].rect
             if rect.colliderect(tile_rect):
                 hit_list.append(tile_rect)
 

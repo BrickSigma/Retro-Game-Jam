@@ -1,10 +1,11 @@
 import pygame
+import asyncio
 
 from src.constants import *
 import src.tileset as Tileset
 from src.scenes import *
 
-def main():
+async def main():
     # pygame setup
     pygame.init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -44,8 +45,9 @@ def main():
         pygame.display.flip()
 
         clock.tick(60)  # limits FPS to 60
+        await asyncio.sleep(0)
 
     pygame.quit()
 
 if __name__=="__main__":
-    main()
+    asyncio.run(main())
