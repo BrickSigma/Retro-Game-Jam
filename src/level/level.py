@@ -87,6 +87,8 @@ class Level:
                     match event.key:
                         case pygame.K_ESCAPE:
                             next_state = LevelState.QUIT
+                        case pygame.K_BACKSPACE:
+                            self.restart()
 
         self.player.update(events, self.tilemap.get_tiles("tiles"), self.tilemap.get_tiles("items"))
 
