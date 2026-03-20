@@ -1,5 +1,4 @@
 import pygame
-import asyncio
 
 from src.constants import *
 import src.tileset as Tileset
@@ -15,7 +14,7 @@ def main():
 
     Tileset.init()
 
-    # current_scene = Menu(canvas)
+    #current_scene = Menu(canvas)
     current_scene = Game(canvas)
 
     running = True
@@ -39,10 +38,12 @@ def main():
             
 
         # Update the screen (flip() swaps the backbuffer and framebuffer)
+        Tileset.render_tile(canvas, Tileset.render_string(f"{int(clock.get_fps())}"), 27, 0)
         pygame.transform.scale(canvas, WINDOW_SIZE, screen)
+
         pygame.display.flip()
 
-        clock.tick(FPS)  # limits FPS to 60
+        clock.tick(60)  # limits FPS to 60
 
     pygame.quit()
 

@@ -1,7 +1,6 @@
 """
 Module containing all global variables, constants, and other utilities.
 """
-import pygame
 
 SCREEN_SIZE = (256, 240)  # Screen resolution
 SCALE = 3                 # Scale to apply to screen for bigger displays
