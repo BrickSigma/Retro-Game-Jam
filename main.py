@@ -5,13 +5,7 @@ from src.constants import *
 import src.tileset as Tileset
 from src.scenes import *
 
-"""
-The game is wrapped in the `main` function below which has also been made asynchronous.
-
-The reason for this is to support a web build of the game (that we can upload to itch.io).
-It'll still run perfectly on desktop.
-"""
-async def main():
+def main():
     # pygame setup
     pygame.init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -49,8 +43,8 @@ async def main():
         pygame.display.flip()
 
         clock.tick(FPS)  # limits FPS to 60
-        await asyncio.sleep(0)  # Needed for web build
 
     pygame.quit()
 
-asyncio.run(main())
+if __name__=="__main__":
+    main()

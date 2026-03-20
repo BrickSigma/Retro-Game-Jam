@@ -8,8 +8,6 @@ import pygame
 class CameraState(Enum):
     HORIZONTAL = 0
     VERTICAL = 1
-    LOCKED_LEFT = 2
-    LOCKED_RIGHT = 3
 
 class Camera:
     WIDTH = 32*8

@@ -26,10 +26,11 @@ def collision_test(rect: pygame.Rect, tiles: Tiles) -> list[pygame.Rect]:
     return hit_list
 
 class Player:
-    GRAVITY = 0.1
+    GRAVITY = 0.2
     MAX_MOMENTUM = 2
     VEL = 1
-    JUMP_HEIGHT = 18  # Let the player jump 18 pixels (or just above 2 tiles)
+    JUMP_HEIGHT = 22  # Let the player jump 18 pixels (or just above 2 tiles)
+    MAX_AIR_TIME = 6
 
     def __init__(self, pos):
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
@@ -40,6 +41,7 @@ class Player:
 
         self.moving_right = False
         self.moving_left = False
+        self.air_time = 0
 
         self.state = PlayerState.IDLE
     
@@ -53,7 +55,7 @@ class Player:
                         case pygame.K_RIGHT:
                             self.moving_right = True
                         case pygame.K_UP | pygame.K_SPACE:
-                            if not self.state == PlayerState.JUMPING:
+                            if (not self.state == PlayerState.JUMPING) and self.air_time < self.MAX_AIR_TIME:
                                 self.enter_jump_state()
                 case pygame.KEYUP:
                     match event.key:
@@ -106,6 +108,12 @@ class Player:
         if collisions["bottom"]:
             self.y_momentum = 0 
             self.state = PlayerState.IDLE
+            self.air_time = 0
+        else:
+            self.air_time += 1
+
+        if collisions["top"]:
+            self.y_momentum = 0
 
     def draw(self, surface: pygame.Surface, camera: Camera):
         camera_pos = camera.get_pos()
