@@ -11,6 +11,7 @@ import pygame
 
 import src.tileset as Tileset
 from src.camera import Camera, CameraState
+from src.tiledmap import TiledMap
 
 """
 INTERNAL NOTES:
@@ -48,42 +49,19 @@ class Stage:
         Every item in the game is dependant on the player's position,
         as it determines the camera viewport and scroll.
         """
-        self.background: pygame.Surface = None
-        self.width = 0  # Stage width in tiles
-        self.height = 0 # Stage height in tiles
-        self.tiles = None
+        self.tilemap = TiledMap(f"{self.stage_folder}/stage.tmx")
 
         self.player = [0, 0]
-        self.camera = Camera((0, 0), f"{self.stage_folder}/breakpoints.txt")
+        self.camera = Camera((0, 0), CameraState.HORIZONTAL, self.tilemap.size())
         self.viewport = pygame.Surface((32*8, 27*8))
 
         self.entities = None
 
         self.stage_banner = Tileset.render_string(f"Stage: {stage_no[0]}-{stage_no[1]}")
 
-        self._load_stage()
         self.restart()
 
         self.counter = 0
-
-    def _load_stage(self):
-        """Load the stage data from its file"""            
-        self.background = pygame.image.load(f"{self.stage_folder}/image.png")
-
-        with open(f"{self.stage_folder}/tile-map.txt") as file:
-            line = file.readline()
-            line = line.split(" ")
-            self.width = int(line[0])
-            self.height = int(line[1])
-            self.tiles = []
-            
-            for h in range(self.height):
-                self.tiles.append([0]*self.width)
-                row = file.readline().strip()
-                row = row.split(",")
-                for w in range(self.width):
-                    tile = int(row[w])
-                    self.tiles[h][w] = tile
 
     def restart(self):
         """
@@ -131,10 +109,12 @@ class Stage:
 
         camera_pos = self.camera.get_pos()
 
+        """Gameplay rendering"""
         self.viewport.fill((0, 0, 0))
-        self.viewport.blit(self.background, self.camera.get_pos())
-        pygame.draw.rect(self.viewport, (255, 0, 0), (self.player[0] + camera_pos[0], self.player[1] + camera_pos[1], 8, 8))
 
+        self.tilemap.draw_layer(self.viewport, self.camera, "tiles")
+        self.tilemap.draw_layer(self.viewport, self.camera, "items")
+        pygame.draw.rect(self.viewport, (255, 0, 0), (self.player[0] - camera_pos[0], self.player[1] - camera_pos[1], 8, 8))
         self.surface.blit(self.viewport, (0, 8*3))
 
         return next_state
