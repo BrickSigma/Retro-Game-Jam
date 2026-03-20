@@ -28,11 +28,11 @@ class Camera:
 
         self.default_state = CameraState.HORIZONTAL
 
-    def update(self, target: list[int, int]):
+    def update(self, target: pygame.Rect):
         """Update the camera to follow a target"""
-        # For now, we'll just follow the target as is without any special states
-        self.pos[0] += (target[0] - self.pos[0] - (16*8))/20
-        self.pos[1] += (target[1] - self.pos[1] - (13*8))/20
+        # For now, we'll just follow 5the target as is without any special states
+        self.pos[0] += (target.x - self.pos[0] - (16*8))/20
+        self.pos[1] += (target.y - self.pos[1] - (13*8))/20
 
     def get_pos(self) -> tuple[int, int]:
         """Get the integer position of the camera"""
