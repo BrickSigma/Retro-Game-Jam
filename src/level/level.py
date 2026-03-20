@@ -1,52 +1,109 @@
 """
-Level module.
+Level module for the game.
 
-Handles loading level files and the stages within a level.
+This handles the core logic of the game that puts everything
+from the player, tiles, enemies, and so on, all together into one scene.
+
+Most of the gameplay takes place here.
 """
 from enum import Enum, unique, auto
 import pygame
 
-from src.level.stage import Stage, StageState
+import src.tileset as Tileset
+from src.camera import Camera, CameraState
+from src.tiledmap import TiledMap
+from src.player import Player
+
+"""
+INTERNAL NOTES:
+Each level has the following components:
+    1. Background layer with non-interactable tiles
+    2. Tile/platform layer used for walking on
+    3. Items/collectables/enemies/other entities layer
+    4. The player camera
+"""
 
 @unique
 class LevelState(Enum):
     NO_CHANGE = auto()
-    NEXT_LEVEL = auto()  # Move to the next level
+    NEXT_LEVEL = auto()     # Moves onto the next level
     QUIT = auto()
+
+@unique
+class MapTiles(Enum):
+    NONE = 0
+    BLOCK = 1
+    RAMP_LEFT = 2
+    RAMP_RIGHT = 3
 
 class Level:
     def __init__(self, surface: pygame.Surface, level_no: int):
         self.surface = surface
         self.level_no = level_no
 
-        self.stage = Stage(surface, (self.level_no, 1))
+        self.level_folder = f"./assets/levels/{self.level_no}"
 
-        self.current_stage = 1
+        """
+        Every item in the game is dependant on the player's position,
+        as it determines the camera viewport and scroll.
+        """
+        self.tilemap = TiledMap(f"{self.level_folder}/level.tmx")
+
+        self.player = Player((0, 0))
+        self.camera = Camera((0, 0), CameraState.HORIZONTAL, self.tilemap.size())
+        self.viewport = pygame.Surface((32*8, 27*8))
+
+        self.entities = None
+
+        self.level_banner = Tileset.render_string(f"Level: {level_no}")
+
+        self.restart()
+
+        self.counter = 0
 
     def restart(self):
-        """Restart the level"""
-        self.current_stage = 1
-        self.stage = Stage(self.surface, (self.level_no, 1))
-
-    def next_stage(self):
-        """Move to the next stage"""
-        self.current_stage += 1
-        self.stage = Stage(self.surface, (self.level_no, self.current_stage))
+        """
+        Restart the level. 
+        This basically sets up the initial state of the level, so things like
+        the player position, camera position and state, and any entities are loaded.
+        """
+        self.player.rect.x = 8*2
+        self.player.rect.y = 22*8
+        self.camera.pos = [0, 0]
+        self.camera.state = self.camera.default_state
+        
 
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
-        match self.stage.update():
-            case StageState.QUIT:
-                next_state = LevelState.QUIT
-            case StageState.NEXT_STAGE:
-                if (self.current_stage + 1) > 3:
-                    next_state = LevelState.NEXT_LEVEL
-                else:
-                    self.next_stage()
-            case StageState.RESTART_LEVEL:
-                self.restart()
-            case StageState.NO_CHANGE:
-                pass
+        events = pygame.event.get()
+
+        # Event handling can take place here
+        for event in events:
+            match event.type:
+                case pygame.QUIT:
+                    next_state = LevelState.QUIT
+                case pygame.KEYDOWN:
+                    match event.key:
+                        case pygame.K_ESCAPE:
+                            next_state = LevelState.QUIT
+
+        self.player.update(events, self.tilemap.get_tiles("tiles"), self.tilemap.get_tiles("items"))
+
+        self.camera.update(self.player.rect)
+
+        self.surface.fill((0, 0, 0))
+        Tileset.render_tile(self.surface, self.level_banner, 0, 0)
+
+        """Gameplay rendering"""
+        self.viewport.fill((0, 0, 0))
+
+        self.tilemap.draw_layer(self.viewport, self.camera, "tiles")
+        self.tilemap.draw_layer(self.viewport, self.camera, "items")
+        self.tilemap.draw_layer(self.viewport, self.camera, "background")
+
+        self.player.draw(self.viewport, self.camera)
+
+        self.surface.blit(self.viewport, (0, 8*3))
 
         return next_state

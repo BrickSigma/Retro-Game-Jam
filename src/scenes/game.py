@@ -4,7 +4,6 @@ Game scene module: this holds the actual playable game.
 
 from src.scenes import Scene, SceneState
 import src.tileset as Tileset
-import pygame
 from src.level import Level, LevelState
 
 class Game(Scene):
@@ -28,7 +27,7 @@ class Game(Scene):
             case LevelState.QUIT:
                 next_state = SceneState.QUIT
             case LevelState.NEXT_LEVEL:
-                if (self.current_level + 1) > 5:
+                if (self.current_level + 1) > 4:
                     next_state = SceneState.CREDITS
                 else:
                     self.next_level()
