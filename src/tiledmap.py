@@ -6,8 +6,9 @@ import pygame
 
 import src.tileset as Tileset
 from src.camera import Camera
+from src.tile import Tile, TileType
 
-type Tiles = list[list[int]]
+type Tiles = list[list[Tile]]
 
 class TiledMap:
     def __init__(self, file: str):
@@ -42,8 +43,8 @@ class TiledMap:
 
         for h in range(0, self.height):
             for w in range(0, self.width):
-                tile_id = self.get_tile(w, h, layer)
-                if tile_id == -1:
+                tile_id = self.get_tile(w, h, layer).type.value
+                if tile_id == None:
                     continue
 
                 self._prerenders[layer].blit(Tileset.get_tile(tile_id), (w*self.tile_size, h*self.tile_size))
@@ -57,7 +58,14 @@ class TiledMap:
             map_data.append([-1]*self.width)
             row = map[y].split(",")
             for x in range(0, self.width):
-                map_data[y][x] = int(row[x])-1  # We need to subtract 1 from the ID
+                value = int(row[x])-1
+                if value == -1:
+                    map_data[y][x] = Tile(x, y, TileType.NONE, False, False)
+                    continue
+                flip_x = bool(value & 0x80000000)
+                flip_y = bool(value & 0x40000000)
+                value &= 0x0000ffff
+                map_data[y][x] = Tile(x, y, TileType(value), flip_x, flip_y)  # We need to subtract 1 from the ID
 
         return map_data
     
@@ -72,7 +80,7 @@ class TiledMap:
         """Tests whether a point is in the tile map"""
         return (x < 0 or x >= self.width or y < 0 or y >= self.height)
 
-    def get_tile(self, x: int, y: int, layer: str) -> int:
+    def get_tile(self, x: int, y: int, layer: str) -> Tile:
         """Get a single tile id from a layer"""
         if (x < 0 or x >= self.width or y < 0 or y >= self.height):
             return -1
