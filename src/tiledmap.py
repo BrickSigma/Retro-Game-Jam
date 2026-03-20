@@ -17,6 +17,10 @@ class TiledMap:
         self.height = 0
         self.tile_size = 0
 
+        # We're going to prerender the entire map onto a surface.
+        # It'll use a little more memory, but will be faster to work with when rendering
+        self._prerenders: dict[str, pygame.Surface] = {}
+
         self._load()
 
     def _load(self):
@@ -30,6 +34,19 @@ class TiledMap:
                 data = child.find("data").text
                 map_data = self._parse_data(data)
                 self.layers[child.attrib["name"]] = map_data
+                self._prerender_map(child.attrib["name"])
+
+    def _prerender_map(self, layer):
+        self._prerenders[layer] = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
+        self._prerenders[layer].convert_alpha()
+
+        for h in range(0, self.height):
+            for w in range(0, self.width):
+                tile_id = self.get_tile(w, h, layer)
+                if tile_id == -1:
+                    continue
+
+                self._prerenders[layer].blit(Tileset.get_tile(tile_id), (w*self.tile_size, h*self.tile_size))
 
     def _parse_data(self, data:str) -> Tiles:
         map = data.split("\n")
@@ -59,7 +76,7 @@ class TiledMap:
         """Get a single tile id from a layer"""
         if (x < 0 or x >= self.width or y < 0 or y >= self.height):
             return -1
-        return self.get_tiles(layer)[y][x]
+        return self.layers[layer][y][x]
     
     def size(self) -> tuple[int, int]:
         """Return the level size"""
@@ -67,24 +84,7 @@ class TiledMap:
     
     def draw_layer(self, surface: pygame.Surface, camera: Camera, layer: str):
         camera_pos = camera.get_pos()
-        camera_tile = [0, 0]
-        camera_tile[0] = camera_pos[0]//self.tile_size
-        camera_tile[1] = camera_pos[1]//self.tile_size
-        
-        camera_tile_pos = [camera_tile[0]*self.tile_size, camera_tile[1]*self.tile_size]
-        camera_delta = [0, 0]
-        camera_delta[0] = camera_pos[0] - camera_tile_pos[0]
-        camera_delta[1] = camera_pos[1] - camera_tile_pos[1]
-        
-        for y in range(0, Camera.HEIGHT + 1):
-            for x in range(0, Camera.WIDTH +1):
-                tile_x = x + camera_tile[0]
-                tile_y = y + camera_tile[1]
-                tile_id = self.get_tile(tile_x, tile_y, layer)
-                if tile_id == -1:
-                    continue
-
-                surface.blit(Tileset.get_tile(tile_id), (x*self.tile_size - camera_delta[0], y*self.tile_size - camera_delta[1]))
+        surface.blit(self._prerenders[layer], (-camera_pos[0], -camera_pos[1]))
 
     def get_tiles_rect(self, rect: pygame.Rect, layer: str) -> Tiles:
         """
