@@ -12,6 +12,7 @@ import pygame
 import src.tileset as Tileset
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
+from src.player import Player
 
 """
 INTERNAL NOTES:
@@ -51,7 +52,7 @@ class Stage:
         """
         self.tilemap = TiledMap(f"{self.stage_folder}/stage.tmx")
 
-        self.player = [0, 0]
+        self.player = Player((0, 0))
         self.camera = Camera((0, 0), CameraState.HORIZONTAL, self.tilemap.size())
         self.viewport = pygame.Surface((32*8, 27*8))
 
@@ -69,7 +70,8 @@ class Stage:
         This basically sets up the initial state of the stage, so things like
         the player position, camera position and state, and any entities are loaded.
         """
-        self.player = [8*2, 22*8]
+        self.player.rect.x = 8*2
+        self.player.rect.y = 22*8
         self.camera.pos = [0, 0]
         self.camera.state = self.camera.default_state
         
@@ -77,8 +79,10 @@ class Stage:
     def update(self) -> StageState:
         next_state = StageState.NO_CHANGE
 
+        events = pygame.event.get()
+
         # Event handling can take place here
-        for event in pygame.event.get():
+        for event in events:
             match event.type:
                 case pygame.QUIT:
                     next_state = StageState.QUIT
@@ -91,30 +95,23 @@ class Stage:
                             pass
                         case pygame.K_BACKSPACE:
                             next_state = StageState.RESTART_LEVEL
-        
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            self.player[0] -= 1
-        elif keys[pygame.K_RIGHT]:
-            self.player[0] += 1
-        if keys[pygame.K_UP]:
-            self.player[1] -= 1
-        elif keys[pygame.K_DOWN]:
-            self.player[1] += 1
 
-        self.camera.update(self.player)
+        self.player.update(events, self.tilemap.get_tiles("tiles"), self.tilemap.get_tiles("items"))
+
+        self.camera.update(self.player.rect)
 
         self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.stage_banner, 0, 0)
-
-        camera_pos = self.camera.get_pos()
 
         """Gameplay rendering"""
         self.viewport.fill((0, 0, 0))
 
         self.tilemap.draw_layer(self.viewport, self.camera, "tiles")
         self.tilemap.draw_layer(self.viewport, self.camera, "items")
-        pygame.draw.rect(self.viewport, (255, 0, 0), (self.player[0] - camera_pos[0], self.player[1] - camera_pos[1], 8, 8))
+        self.tilemap.draw_layer(self.viewport, self.camera, "background")
+
+        self.player.draw(self.viewport, self.camera)
+
         self.surface.blit(self.viewport, (0, 8*3))
 
         return next_state
