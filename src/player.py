@@ -5,12 +5,15 @@ from math import sqrt
 from src.camera import Camera
 from src.tileset import TILE_SIZE, TileType
 from src.tiledmap import Tiles
+from src.animator import Animator
 
 @unique
 class PlayerState(Enum):
     """Used for handling the player states in its own internal state machine"""
     IDLE = auto()
     JUMPING = auto()
+    MOVING = auto()
+    FALLING = auto()
 
 def collision_test(rect: pygame.Rect, tiles: Tiles) -> list[pygame.Rect]:
     hit_list = []
@@ -30,7 +33,7 @@ class Player:
     MAX_MOMENTUM = 2
     VEL = 1
     JUMP_HEIGHT = 22  # Let the player jump 18 pixels (or just above 2 tiles)
-    MAX_AIR_TIME = 6
+    MAX_AIR_TIME = 12
 
     def __init__(self, pos):
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
@@ -43,7 +46,22 @@ class Player:
         self.moving_left = False
         self.air_time = 0
 
+        self.facing_right = True
+
         self.state = PlayerState.IDLE
+
+        # adding animation to player character
+        self.animations = {
+            PlayerState.IDLE: Animator(frames = [TileType.PLAYER_IDLE.value], speed = 20),
+            PlayerState.JUMPING: Animator(frames = [TileType.PLAYER_ROPE_1.value], speed = 1),
+            PlayerState.MOVING: Animator(frames = [
+                TileType.PLAYER_RUN_1.value, 
+                TileType.PLAYER_RUN_2.value, 
+                TileType.PLAYER_RUN_3.value, 
+                TileType.PLAYER_RUN_4.value
+            ], speed = 8),
+            PlayerState.FALLING: Animator(frames=[TileType.PLAYER_CLIMB_1.value, TileType.PLAYER_CLIMB_2.value], speed=8)
+        }
     
     def _handle_events(self, events: list[pygame.Event]):
         for event in events:
@@ -52,8 +70,10 @@ class Player:
                     match event.key:
                         case pygame.K_LEFT:
                             self.moving_left = True
+                            self.facing_right = False
                         case pygame.K_RIGHT:
                             self.moving_right = True
+                            self.facing_right = True
                         case pygame.K_UP | pygame.K_SPACE:
                             if (not self.state == PlayerState.JUMPING) and self.air_time < self.MAX_AIR_TIME:
                                 self.enter_jump_state()
@@ -75,6 +95,14 @@ class Player:
             elif movement[0] < 0:
                 self.rect.left = tile.right
                 collision_types['left'] = True
+
+        # This keeps the player from leaving the horizontal boundary
+        map_width_px = len(tiles[0]) * TILE_SIZE
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > map_width_px:
+            self.rect.right = map_width_px
+
         self.rect.y += movement[1]
         hit_list = collision_test(self.rect, tiles)
         for tile in hit_list:
@@ -86,7 +114,16 @@ class Player:
                 collision_types['top'] = True
 
         return collision_types
+    
+    def get_current_frame(self) -> pygame.Surface:
+        """
+        Get the current animation frame and flip it if the player is facing left
 
+        """
+        frame = self.animations[self.state].get_frame()
+        if not self.facing_right:
+            frame = pygame.transform.flip(frame, True, False)
+        return frame
 
     def update(self, events: list[pygame.Event], tiles: Tiles, items: Tiles):
         self._handle_events(events)
@@ -107,17 +144,26 @@ class Player:
 
         if collisions["bottom"]:
             self.y_momentum = 0 
-            self.state = PlayerState.IDLE
             self.air_time = 0
+            if self.moving_left or self.moving_right:
+                self.state = PlayerState.MOVING
+            else:
+                self.state = PlayerState.IDLE
         else:
             self.air_time += 1
+            if self.y_momentum > 1:
+                self.state = PlayerState.FALLING
 
         if collisions["top"]:
             self.y_momentum = 0
 
     def draw(self, surface: pygame.Surface, camera: Camera):
         camera_pos = camera.get_pos()
-        pygame.draw.rect(surface, (255, 0, 0), (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1], 8, 8))
+
+        self.animations[self.state].update()
+        frame = self.get_current_frame()
+        surface.blit(frame, (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1]))
+        # pygame.draw.rect(surface, (255, 0, 0), (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1], 8, 8))
 
 
     """
@@ -128,4 +174,5 @@ class Player:
     def enter_jump_state(self):
         self.state = PlayerState.JUMPING
         self.y_momentum = -self.JUMP_VEL
+        self.animations[self.state].reset()
 
