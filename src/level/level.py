@@ -37,6 +37,10 @@ class MapTiles(Enum):
     RAMP_RIGHT = 3
 
 class Level:
+    LAYER_PLATFORM   = "platform"   # solid tiles the player walks on
+    LAYER_ITEMS      = "items"      # collectibles and interactables (optional)
+    LAYER_BACKGROUND = "background" # non-collidable backdrop tiles (optional)
+
     def __init__(self, surface: pygame.Surface, level_no: int):
         self.surface = surface
         self.level_no = level_no
@@ -59,19 +63,16 @@ class Level:
 
         self.restart()
 
-        self.counter = 0
-
     def restart(self):
         """
         Restart the level. 
         This basically sets up the initial state of the level, so things like
         the player position, camera position and state, and any entities are loaded.
         """
-        self.player.rect.x = 8*2
-        self.player.rect.y = 22*8
+        self.player.rect.x = 25 * 2
+        self.player.rect.y = 16 * 8
         self.camera.pos = [0, 0]
         self.camera.state = self.camera.default_state
-        
 
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
@@ -90,7 +91,11 @@ class Level:
                         case pygame.K_BACKSPACE:
                             self.restart()
 
-        self.player.update(events, self.tilemap.get_tiles("tiles"), self.tilemap.get_tiles("items"))
+        self.player.update(
+            events, 
+            self.tilemap.get_tiles(self.LAYER_PLATFORM), 
+            self.tilemap.get_tiles(self.LAYER_ITEMS)
+        )
 
         self.camera.update(self.player.rect)
 
@@ -100,9 +105,9 @@ class Level:
         """Gameplay rendering"""
         self.viewport.fill((0, 0, 0))
 
-        self.tilemap.draw_layer(self.viewport, self.camera, "tiles")
-        self.tilemap.draw_layer(self.viewport, self.camera, "items")
-        self.tilemap.draw_layer(self.viewport, self.camera, "background")
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND)
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_ITEMS)
 
         self.player.draw(self.viewport, self.camera)
 
