@@ -22,6 +22,7 @@ class TiledMap:
 
         self.tmx = pytmx.load_pygame(file)
 
+        # I've kept the old parser as the tilemap still uses it, but rendering uses pytmx now
         self._load()
 
     def _load(self):
@@ -38,6 +39,9 @@ class TiledMap:
                 self._prerender_map(child.attrib["name"])
 
     def _prerender_map(self, layer):
+        """
+        Old code for prerendering the map. I've kept in it for archive referencing incase performance drops
+        """
         self._prerenders[layer] = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
         self._prerenders[layer].convert_alpha()
 
@@ -50,6 +54,9 @@ class TiledMap:
                 self._prerenders[layer].blit(Tileset.get_tile(tile_id), (w*self.tile_size, h*self.tile_size))
 
     def _parse_data(self, data:str) -> Tiles:
+        """
+        This function sets up the tile collision maps
+        """
         map = data.split("\n")
         map_data: Tiles = []
         map.pop(0)
