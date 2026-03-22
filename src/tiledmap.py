@@ -1,8 +1,6 @@
-"""
-Temporary file for testing
-"""
 import xml.etree.ElementTree as ET
 import pygame
+import pytmx
 
 import src.tileset as Tileset
 from src.camera import Camera
@@ -22,6 +20,9 @@ class TiledMap:
         # It'll use a little more memory, but will be faster to work with when rendering
         self._prerenders: dict[str, pygame.Surface] = {}
 
+        self.tmx = pytmx.load_pygame(file)
+
+        # I've kept the old parser as the tilemap still uses it, but rendering uses pytmx now
         self._load()
 
     def _load(self):
@@ -38,6 +39,9 @@ class TiledMap:
                 self._prerender_map(child.attrib["name"])
 
     def _prerender_map(self, layer):
+        """
+        Old code for prerendering the map. I've kept in it for archive referencing incase performance drops
+        """
         self._prerenders[layer] = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
         self._prerenders[layer].convert_alpha()
 
@@ -50,6 +54,9 @@ class TiledMap:
                 self._prerenders[layer].blit(Tileset.get_tile(tile_id), (w*self.tile_size, h*self.tile_size))
 
     def _parse_data(self, data:str) -> Tiles:
+        """
+        This function sets up the tile collision maps
+        """
         map = data.split("\n")
         map_data: Tiles = []
         map.pop(0)
@@ -69,16 +76,30 @@ class TiledMap:
 
         return map_data
     
-    def get_tiles(self, layer: str) -> Tiles:
+    def get_layer(self, layer: str):
+        """
+        Safely fetch a layer by name.
+        Returns None instead of crashing if the layer doesn't exist.
+        """
+        try:
+            return self.tmx.get_layer_by_name(layer)
+        except ValueError:
+            return None
+    
+    def get_layer_tiles(self, layer: str) -> Tiles:
+        """
+        Safely fetch a layer by name.
+        Returns None instead of crashing if the layer doesn't exist.
+        """
+        try:
+            return self.layers[layer]
+        except:
+            return None
+    
+    def get_tiles(self, layer: str) -> Tiles | None:
         """Get the tile data for a layer"""
-        tiles = self.layers[layer]
-        if tiles == None:
-            raise Exception(f"{layer} does not exist!")
+        tiles = self.get_layer_tiles(layer)
         return tiles
-
-    def coord_in_map(self, x, y) -> bool:
-        """Tests whether a point is in the tile map"""
-        return (x < 0 or x >= self.width or y < 0 or y >= self.height)
 
     def get_tile(self, x: int, y: int, layer: str) -> Tile:
         """Get a single tile id from a layer"""
@@ -92,7 +113,28 @@ class TiledMap:
     
     def draw_layer(self, surface: pygame.Surface, camera: Camera, layer: str):
         camera_pos = camera.get_pos()
-        surface.blit(self._prerenders[layer], (-camera_pos[0], -camera_pos[1]))
+        layer_data = self.get_layer(layer)
+        if layer_data is None:
+            return
+
+        camera_pos = camera.get_pos()
+        camera_tile_x = camera_pos[0] // self.tile_size
+        camera_tile_y = camera_pos[1] // self.tile_size
+        camera_delta_x = camera_pos[0] - camera_tile_x * self.tile_size
+        camera_delta_y = camera_pos[1] - camera_tile_y * self.tile_size
+
+        for x, y, gid in layer_data:
+            if gid == 0:
+                continue
+            tile_image = self.tmx.get_tile_image_by_gid(gid)
+            if tile_image is None:
+                continue
+            screen_x = (x - camera_tile_x) * self.tile_size - camera_delta_x
+            screen_y = (y - camera_tile_y) * self.tile_size - camera_delta_y
+            # Only draw tiles visible in the viewport
+            if (-self.tile_size < screen_x < Camera.WIDTH * self.tile_size and
+                    -self.tile_size < screen_y < Camera.HEIGHT * self.tile_size):
+                surface.blit(tile_image, (screen_x, screen_y))
 
     def get_tiles_rect(self, rect: pygame.Rect, layer: str) -> Tiles:
         """
