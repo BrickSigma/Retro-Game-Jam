@@ -12,7 +12,7 @@ import pygame
 import src.tileset as Tileset
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
-from src.player import Player, PlayerUpdateState
+from src.player import Player, PlayerUpdateState, PlayerState
 from src.entities.entity import Entity, EntityType
 
 """
@@ -42,7 +42,7 @@ class Level:
     LAYER_ITEMS      = "items"      # collectibles and interactables (optional)
     LAYER_BACKGROUND = "background" # non-collidable backdrop tiles (optional)
 
-    def __init__(self, surface: pygame.Surface, level_no: int):
+    def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
         self.surface = surface
         self.level_no = level_no
 
@@ -69,12 +69,12 @@ class Level:
 
         self.entities.pop(player_index)
 
-        self.camera = Camera((0, 0), CameraState.HORIZONTAL, self.tilemap.size())
+        self.restart()
+
+        self.camera = Camera((self.player.pos[0], self.player.pos[1]), camera_type, self.tilemap.size())
         self.viewport = pygame.Surface((32*8, 27*8))
 
         self.level_banner = Tileset.render_string(f"Level: {level_no}")
-
-        self.restart()
 
     def restart(self):
         """
@@ -85,9 +85,8 @@ class Level:
         self.player.pos = [self.player_start.x, self.player_start.y]
         self.player.rect.x = self.player_start.x
         self.player.rect.y = self.player_start.y
-            
-        self.camera.state = self.camera.default_state
-
+        self.player.state = PlayerState.IDLE
+    
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
@@ -105,9 +104,15 @@ class Level:
                         case pygame.K_BACKSPACE:
                             self.restart()
 
+        tiles_rect = pygame.Rect(
+            (self.player.rect.x//Tileset.TILE_SIZE) - 1, 
+            (self.player.rect.y//Tileset.TILE_SIZE) - 1, 
+            4, 
+            4)
+        adjecent_tiles = self.tilemap.get_tiles_rect(tiles_rect, self.LAYER_PLATFORM)
         player_state = self.player.update(
             events, 
-            self.tilemap.get_tiles(self.LAYER_PLATFORM), 
+            adjecent_tiles, 
             self.entities
         )
 

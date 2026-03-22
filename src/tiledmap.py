@@ -6,7 +6,7 @@ from enum import Enum, auto
 import src.tileset as Tileset
 from src.camera import Camera
 from src.tile import Tile, TileType
-from src.entities.entity import Entity, EntityType
+from src.entities.entity import *
 
 type Tiles = list[list[Tile]]
 
@@ -107,7 +107,7 @@ class TiledMap:
     def get_tile(self, x: int, y: int, layer: str) -> Tile:
         """Get a single tile id from a layer"""
         if (x < 0 or x >= self.width or y < 0 or y >= self.height):
-            return -1
+            return None
         return self.layers[layer][y][x]
     
     def size(self) -> tuple[int, int]:
@@ -152,22 +152,29 @@ class TiledMap:
         `rect`: should be a tuple with (x, y, w, h) values
         """
 
-        tiles = []
+        tiles: list[list[Tile]] = []
         for y in range(0, rect.h):
-            tiles.append([-1]*rect.w)
+            tiles.append([])
             for x in range(0, rect.w):
                 tile_x = x + rect.x
                 tile_y = y + rect.y
-                tile_id = self.get_tile(tile_x, tile_y, layer)
-                tiles[y][x] = tile_id
+                tile = self.get_tile(tile_x, tile_y, layer)
+                if tile == None:
+                    tile = Tile(tile_x, tile_y, TileType.NONE, False, False)
+                tiles[y].append(tile)
 
-        return tiles                
+        return tiles           
 
     def get_entities(self) -> list[Entity]:
         entities: list[Entity] = []
 
         for entity in self.tmx.objects:
-            entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.name)))
+            type = EntityType.from_name(entity.type)
+            match type:
+                case EntityType.SPIKE:
+                    entities.append(Spike(entity.x, entity.y, type, entity.rotation))
+                case _:
+                    entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.type)))
 
         return entities
     
