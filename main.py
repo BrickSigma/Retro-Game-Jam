@@ -44,7 +44,7 @@ async def main():
 
         pygame.display.flip()
 
-        clock.tick(60)  # limits FPS to 60
+        clock.tick(FPS)  # limits FPS to 60
         await asyncio.sleep(0)
 
     pygame.quit()
