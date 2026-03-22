@@ -23,10 +23,8 @@ class Camera:
         `stage_size` - tuple with the width and height of the stage in number of tiles
         """
         self.pos: list[float] = list(pos)
-        self.state = CameraState.HORIZONTAL
+        self.state = state
         self.stage_size = stage_size
-
-        self.default_state = CameraState.HORIZONTAL
 
     def update(self, target: pygame.Rect):
         """Update the camera to follow a target"""

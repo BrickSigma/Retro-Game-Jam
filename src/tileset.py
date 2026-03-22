@@ -71,7 +71,14 @@ class TileType(Enum):
     SPIKE = 89
     SPRING = 90
     STALAGMITE = 91
+    LEVER = 92
+    SWORD = 93
+    TORCH = 94
+    VINE = 95
+    WINDOW = 96
+    WINDOW_TOP = 97
     PLAYER_SLIDING = 98
+    PLAYER_DEAD = 99
 
 def init():
     global tileset
