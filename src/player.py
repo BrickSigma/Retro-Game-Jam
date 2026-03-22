@@ -6,6 +6,7 @@ from src.camera import Camera
 from src.tileset import TILE_SIZE, TileType
 from src.tiledmap import Tiles
 from src.animator import Animator
+from src.frect import FRect
 
 @unique
 class PlayerState(Enum):
@@ -14,6 +15,7 @@ class PlayerState(Enum):
     JUMPING = auto()
     MOVING = auto()
     FALLING = auto()
+    SLIDING = auto()
 
 def collision_test(rect: pygame.Rect, tiles: Tiles) -> list[pygame.Rect]:
     hit_list = []
@@ -35,8 +37,15 @@ class Player:
     JUMP_HEIGHT = 22  # Let the player jump 18 pixels (or just above 2 tiles)
     MAX_AIR_TIME = 12
 
+    class CollisionTypes:
+        def __init__(self):
+            self.top = False
+            self.bottom = False
+            self.left = False
+            self.right = False
+
     def __init__(self, pos):
-        self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
+        self.frect = FRect(pos[0], pos[1], 8, 8)
 
         # Variable related to player physics
         self.y_momentum = 0
@@ -59,8 +68,9 @@ class Player:
                 TileType.PLAYER_RUN_2.value, 
                 TileType.PLAYER_RUN_3.value, 
                 TileType.PLAYER_RUN_4.value
-            ], speed = 8),
-            PlayerState.FALLING: Animator(frames=[TileType.PLAYER_CLIMB_1.value, TileType.PLAYER_CLIMB_2.value], speed=8)
+            ], speed = 6),
+            PlayerState.FALLING: Animator(frames=[TileType.PLAYER_CLIMB_1.value, TileType.PLAYER_CLIMB_2.value], speed=8),
+            PlayerState.SLIDING: Animator(frames = [TileType.SPIDER.value], speed = 20),
         }
     
     def _handle_events(self, events: list[pygame.Event]):
@@ -84,34 +94,34 @@ class Player:
                         case pygame.K_RIGHT:
                             self.moving_right = False
 
-    def move(self, movement: list[int], tiles: Tiles, items: Tiles) -> dict[str, bool]:
-        collision_types = {'top': False, 'bottom': False, 'right': False, 'left': False}
-        self.rect.x += movement[0]
-        hit_list = collision_test(self.rect, tiles)
+    def move(self, movement: list[float], tiles: Tiles, items: Tiles) -> CollisionTypes:
+        collision_types = self.CollisionTypes()
+        self.frect.x += movement[0]
+        hit_list = collision_test(self.frect.get_rect(), tiles)
         for tile in hit_list:
             if movement[0] > 0:
-                self.rect.right = tile.left
-                collision_types['right'] = True
+                self.frect.set_right(tile.left)
+                collision_types.right = True
             elif movement[0] < 0:
-                self.rect.left = tile.right
-                collision_types['left'] = True
+                self.frect.set_left(tile.right)
+                collision_types.left = True
 
         # This keeps the player from leaving the horizontal boundary
         map_width_px = len(tiles[0]) * TILE_SIZE
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > map_width_px:
-            self.rect.right = map_width_px
+        if self.frect.x < 0:
+            self.frect.x = 0
+        if (self.frect.x + self.frect.w) > map_width_px:
+            self.frect.x = map_width_px - self.frect.w
 
-        self.rect.y += movement[1]
-        hit_list = collision_test(self.rect, tiles)
+        self.frect.y += movement[1]
+        hit_list = collision_test(self.frect.get_rect(), tiles)
         for tile in hit_list:
             if movement[1] > 0:
-                self.rect.bottom = tile.top
-                collision_types['bottom'] = True
+                self.frect.set_bottom(tile.top)
+                collision_types.bottom = True
             elif movement[1] < 0:
-                self.rect.top = tile.bottom
-                collision_types['top'] = True
+                self.frect.set_top(tile.bottom)
+                collision_types.top = True
 
         return collision_types
     
@@ -136,13 +146,14 @@ class Player:
             player_movement[0] += self.VEL
 
         player_movement[1] += self.y_momentum
-        self.y_momentum += self.GRAVITY
+        if not (self.state == PlayerState.SLIDING):
+            self.y_momentum += self.GRAVITY
         if self.y_momentum > self.MAX_MOMENTUM:
             self.y_momentum = self.MAX_MOMENTUM
 
         collisions = self.move(player_movement, tiles, items)
 
-        if collisions["bottom"]:
+        if collisions.bottom:
             self.y_momentum = 0 
             self.air_time = 0
             if self.moving_left or self.moving_right:
@@ -150,11 +161,15 @@ class Player:
             else:
                 self.state = PlayerState.IDLE
         else:
-            self.air_time += 1
-            if self.y_momentum > 1:
-                self.state = PlayerState.FALLING
+            if collisions.left or collisions.right:
+                self.state = PlayerState.SLIDING
+                self.y_momentum = 0.2
+            else:
+                self.air_time += 1
+                if self.y_momentum > 1 or self.state == PlayerState.SLIDING:
+                    self.state = PlayerState.FALLING
 
-        if collisions["top"]:
+        if collisions.top:
             self.y_momentum = 0
 
     def draw(self, surface: pygame.Surface, camera: Camera):
@@ -162,7 +177,7 @@ class Player:
 
         self.animations[self.state].update()
         frame = self.get_current_frame()
-        surface.blit(frame, (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1]))
+        surface.blit(frame, (int(self.frect.x) - camera_pos[0], int(self.frect.y) - camera_pos[1]))
         # pygame.draw.rect(surface, (255, 0, 0), (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1], 8, 8))
 
 

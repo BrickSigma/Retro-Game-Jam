@@ -69,8 +69,8 @@ class Level:
         This basically sets up the initial state of the level, so things like
         the player position, camera position and state, and any entities are loaded.
         """
-        self.player.rect.x = 25 * 2
-        self.player.rect.y = 16 * 8
+        self.player.frect.x = 25 * 2
+        self.player.frect.y = 16 * 8
         self.camera.pos = [0, 0]
         self.camera.state = self.camera.default_state
 
@@ -97,7 +97,7 @@ class Level:
             self.tilemap.get_tiles(self.LAYER_ITEMS)
         )
 
-        self.camera.update(self.player.rect)
+        self.camera.update(self.player.frect.get_rect())
 
         self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.level_banner, 0, 0)
