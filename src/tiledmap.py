@@ -1,10 +1,12 @@
 import xml.etree.ElementTree as ET
 import pygame
 import pytmx
+from enum import Enum, auto
 
 import src.tileset as Tileset
 from src.camera import Camera
 from src.tile import Tile, TileType
+from src.entities.entity import Entity, EntityType
 
 type Tiles = list[list[Tile]]
 
@@ -21,6 +23,7 @@ class TiledMap:
         self._prerenders: dict[str, pygame.Surface] = {}
 
         self.tmx = pytmx.load_pygame(file)
+        self.get_entities()
 
         # I've kept the old parser as the tilemap still uses it, but rendering uses pytmx now
         self._load()
@@ -111,11 +114,13 @@ class TiledMap:
         """Return the level size"""
         return (self.width, self.height)
     
-    def draw_layer(self, surface: pygame.Surface, camera: Camera, layer: str):
+    def draw_layer(self, surface: pygame.Surface, camera: Camera, layer: str, color_mask: tuple[int] = None):
         camera_pos = camera.get_pos()
         layer_data = self.get_layer(layer)
         if layer_data is None:
             return
+        
+        surf_mask = pygame.Surface(surface.size, pygame.SRCALPHA) if color_mask is not None else surface
 
         camera_pos = camera.get_pos()
         camera_tile_x = camera_pos[0] // self.tile_size
@@ -134,7 +139,10 @@ class TiledMap:
             # Only draw tiles visible in the viewport
             if (-self.tile_size < screen_x < Camera.WIDTH * self.tile_size and
                     -self.tile_size < screen_y < Camera.HEIGHT * self.tile_size):
-                surface.blit(tile_image, (screen_x, screen_y))
+                surf_mask.blit(tile_image, (screen_x, screen_y))
+
+        if color_mask is not None:
+            surface.blit(Tileset.swap_color(surf_mask, (255, 255, 255), color_mask), (0, 0))
 
     def get_tiles_rect(self, rect: pygame.Rect, layer: str) -> Tiles:
         """
@@ -154,3 +162,12 @@ class TiledMap:
                 tiles[y][x] = tile_id
 
         return tiles                
+
+    def get_entities(self) -> list[Entity]:
+        entities: list[Entity] = []
+
+        for entity in self.tmx.objects:
+            entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.name)))
+
+        return entities
+    

@@ -70,7 +70,8 @@ class TileType(Enum):
     SPIDER_WEB = 88
     SPIKE = 89
     SPRING = 90
-    STALAGMITE =91
+    STALAGMITE = 91
+    PLAYER_SLIDING = 98
 
 def init():
     global tileset

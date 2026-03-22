@@ -12,7 +12,8 @@ import pygame
 import src.tileset as Tileset
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
-from src.player import Player
+from src.player import Player, PlayerUpdateState
+from src.entities.entity import Entity, EntityType
 
 """
 INTERNAL NOTES:
@@ -53,11 +54,23 @@ class Level:
         """
         self.tilemap = TiledMap(f"{self.level_folder}/level.tmx")
 
-        self.player = Player((0, 0))
+        self.entities = self.tilemap.get_entities()
+
+        self.player_start: Entity = None
+        self.player = Player((0, 0), self.tilemap.size())
+
+        player_index = -1
+        for i in range(len(self.entities)):
+            entity = self.entities[i]
+            if entity.type == EntityType.PLAYER:
+                player_index = i
+                self.player_start = entity
+                break
+
+        self.entities.pop(player_index)
+
         self.camera = Camera((0, 0), CameraState.HORIZONTAL, self.tilemap.size())
         self.viewport = pygame.Surface((32*8, 27*8))
-
-        self.entities = None
 
         self.level_banner = Tileset.render_string(f"Level: {level_no}")
 
@@ -69,10 +82,10 @@ class Level:
         This basically sets up the initial state of the level, so things like
         the player position, camera position and state, and any entities are loaded.
         """
-        self.player.rect.x = 25 * 2
-        self.player.rect.y = 16 * 8
-        self.player.pos = [25*2, 16 * 8]
-        self.camera.pos = [0, 0]
+        self.player.pos = [self.player_start.x, self.player_start.y]
+        self.player.rect.x = self.player_start.x
+        self.player.rect.y = self.player_start.y
+            
         self.camera.state = self.camera.default_state
 
     def update(self) -> LevelState:
@@ -92,11 +105,19 @@ class Level:
                         case pygame.K_BACKSPACE:
                             self.restart()
 
-        self.player.update(
+        player_state = self.player.update(
             events, 
             self.tilemap.get_tiles(self.LAYER_PLATFORM), 
-            self.tilemap.get_tiles(self.LAYER_ITEMS)
+            self.entities
         )
+
+        match player_state:
+            case PlayerUpdateState.NO_CHANGE:
+                pass
+            case PlayerUpdateState.DIED:
+                self.restart()
+            case PlayerUpdateState.COMPLETED_LEVEL:
+                next_state = LevelState.NEXT_LEVEL
 
         self.camera.update(self.player.rect)
 
@@ -106,9 +127,11 @@ class Level:
         """Gameplay rendering"""
         self.viewport.fill((0, 0, 0))
 
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND)
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND, (128, 128, 128))
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_ITEMS)
+
+        for entity in self.entities:
+            entity.draw(self.viewport, self.camera)
 
         self.player.draw(self.viewport, self.camera)
 

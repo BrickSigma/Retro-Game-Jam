@@ -6,6 +6,13 @@ from src.camera import Camera
 from src.tileset import TILE_SIZE, TileType
 from src.tiledmap import Tiles
 from src.animator import Animator
+from src.entities.entity import Entity, EntityType
+
+@unique
+class PlayerUpdateState(Enum):
+    NO_CHANGE = auto()
+    DIED = auto()
+    COMPLETED_LEVEL = auto()
 
 @unique
 class PlayerState(Enum):
@@ -46,9 +53,10 @@ class Player:
             self.left = False
             self.right = False
 
-    def __init__(self, pos):
+    def __init__(self, pos, stage_size: tuple[int, int]):
         self.pos: list[float] = list(pos)
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
+        self.stage_size = stage_size
 
         # Variable related to player physics
         self.y_momentum = 0
@@ -79,7 +87,7 @@ class Player:
                 TileType.PLAYER_RUN_4.value
             ], speed = 6),
             PlayerState.FALLING: Animator(frames=[TileType.PLAYER_CLIMB_1.value, TileType.PLAYER_CLIMB_2.value], speed=8),
-            PlayerState.SLIDING: Animator(frames = [TileType.SPIDER.value], speed = 20),
+            PlayerState.SLIDING: Animator(frames = [TileType.PLAYER_SLIDING.value], speed = 20),
             PlayerState.WALL_JUMP: Animator(frames = [TileType.PLAYER_ROPE_1.value], speed = 1),
         }
     
@@ -108,10 +116,8 @@ class Player:
                                     self.enter_wall_jump_state()
                                 elif self.air_time < self.MAX_AIR_TIME:
                                     self.enter_jump_state()
-                        case pygame.K_p:
-                            pass
 
-    def move(self, movement: list[float], tiles: Tiles, items: Tiles) -> CollisionTypes:
+    def move(self, movement: list[float], tiles: Tiles, entities: list[Entity]) -> CollisionTypes:
         collision_types = self.CollisionTypes()
         self.pos[0] += movement[0]
         self.rect.x = self.pos[0]
@@ -159,7 +165,9 @@ class Player:
             frame = pygame.transform.flip(frame, True, False)
         return frame
 
-    def update(self, events: list[pygame.Event], tiles: Tiles, items: Tiles):
+    def update(self, events: list[pygame.Event], tiles: Tiles, entities: list[Entity]) -> PlayerUpdateState:
+        next_state = PlayerUpdateState.NO_CHANGE
+
         self._handle_events(events)
 
         player_movement = [0, 0]
@@ -182,7 +190,7 @@ class Player:
         if self.y_momentum > self.MAX_MOMENTUM:
             self.y_momentum = self.MAX_MOMENTUM
 
-        collisions = self.move(player_movement, tiles, items)
+        collisions = self.move(player_movement, tiles, entities)
         if collisions.bottom:
             self.y_momentum = 0.2
             self.air_time = 0
@@ -204,6 +212,17 @@ class Player:
 
         if collisions.top:
             self.y_momentum = 0
+
+        # Check if the player has hit any entities
+        gate: Entity = list(filter(lambda e: e.type == EntityType.GATE, entities))[0]
+
+        if self.rect.colliderect(gate.rect):
+            next_state = PlayerUpdateState.COMPLETED_LEVEL
+
+        if self.rect.y + self.rect.h > self.stage_size[1]*TILE_SIZE:
+            next_state = PlayerUpdateState.DIED
+
+        return next_state
 
     def draw(self, surface: pygame.Surface, camera: Camera):
         camera_pos = camera.get_pos()
