@@ -79,6 +79,7 @@ class TileType(Enum):
     WINDOW_TOP = 97
     PLAYER_SLIDING = 98
     PLAYER_DEAD = 99
+    GUARDIAN_IDLE = 100
 
 def init():
     global tileset

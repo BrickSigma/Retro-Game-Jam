@@ -14,6 +14,7 @@ from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
 from src.entities.entity import Entity, EntityType
+from src.guardian import Guardian
 
 """
 INTERNAL NOTES:
@@ -45,36 +46,43 @@ class Level:
     def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
         self.surface = surface
         self.level_no = level_no
-
         self.level_folder = f"./assets/levels/{self.level_no}"
 
         """
         Every item in the game is dependant on the player's position,
         as it determines the camera viewport and scroll.
         """
+
         self.tilemap = TiledMap(f"{self.level_folder}/level.tmx")
-
         self.entities = self.tilemap.get_entities()
-
         self.player_start: Entity = None
-        self.player = Player((0, 0), self.tilemap.size())
-
         player_index = -1
-        for i in range(len(self.entities)):
-            entity = self.entities[i]
+        for i, entity in enumerate(self.entities):
             if entity.type == EntityType.PLAYER:
                 player_index = i
                 self.player_start = entity
                 break
-
         self.entities.pop(player_index)
 
-        self.restart()
+        # Create player at spawn, then attach guardian
+        self.player = Player((self.player_start.x, self.player_start.y), self.tilemap.size())
+        self.guardian = Guardian(self.player, pos=(self.player_start.x, self.player_start.y))
 
         self.camera = Camera((self.player.pos[0], self.player.pos[1]), camera_type, self.tilemap.size())
-        self.viewport = pygame.Surface((32*8, 27*8))
+        self.viewport = pygame.Surface((32 * 8, 27 * 8))
 
+        # Lives system - 3 is the starting amount
+        self.MAX_LIVES = 3
+        self.lives = self.MAX_LIVES
+
+        # HUD banners — built once, not every frame
         self.level_banner = Tileset.render_string(f"Level: {level_no}")
+        self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
+        
+        # restart() called last — player and guardian are ready
+        self.restart()
+
+
 
     def restart(self):
         """
@@ -82,15 +90,46 @@ class Level:
         This basically sets up the initial state of the level, so things like
         the player position, camera position and state, and any entities are loaded.
         """
+        self.lives = self.MAX_LIVES
+        self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
+
+        # Reloade entities fresh from the map so spikes/enemies are back in place
+        self.entities = self.tilemap.get_entities()
+        self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
+
+        self._respawn_player()
+
+    def respawn(self):
+        """
+        Soft reset — called when the player dies but still has lives remaining.
+        Only resets the player position and entities, lives stay the same.
+        """
+        # Rebuild the lives banner to reflect the new count
+        self.entities = self.tilemap.get_entities()
+        self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
+
+        self._respawn_player()
+
+    def _respawn_player(self):
+        """
+        Shared logic between restart() and respawn().
+        Moves the player back to the spawn point and clears the guardian path.
+        """
         self.player.pos = [self.player_start.x, self.player_start.y]
         self.player.rect.x = self.player_start.x
         self.player.rect.y = self.player_start.y
         self.player.state = PlayerState.IDLE
-    
+        self.player.y_momentum = 0
+
+        if self.player.follow:
+            self.player.follow.path.clear()
+
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
         events = pygame.event.get()
+        self.guardian.update()
+        self.guardian.draw(self.viewport, self.camera)
 
         # Event handling can take place here
         for event in events:
@@ -120,20 +159,31 @@ class Level:
             case PlayerUpdateState.NO_CHANGE:
                 pass
             case PlayerUpdateState.DIED:
-                self.restart()
+                self.lives -= 1
+                if self.lives <=0:
+                    next_state = LevelState.GAME_OVER # signal game over to game.py
+                else:
+                    self.respawn() # sof reset, keep remaining lives
             case PlayerUpdateState.COMPLETED_LEVEL:
                 next_state = LevelState.NEXT_LEVEL
 
-        self.camera.update(self.player.rect)
-
+        # Clear surface
         self.surface.fill((0, 0, 0))
-        Tileset.render_tile(self.surface, self.level_banner, 0, 0)
-
-        """Gameplay rendering"""
         self.viewport.fill((0, 0, 0))
 
+        # Draw HUD - level name on left, hearts on right
+        Tileset.render_tile(self.surface, self.level_banner, 0, 0)
+        heart = Tileset.get_tile(TileType.HEART.value)
+        for i in range(self.lives):
+            Tileset.render_tile(self.surface, heart, 20 + i, 0)
+
+        # Draw world layers
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND, (128, 128, 128))
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
+
+        # Guardian drawn AFTER viewport.fill() so it's not wiped — fixes the guardian bug too
+        self.guardian.update()
+        self.guardian.draw(self.viewport, self.camera)
 
         for entity in self.entities:
             entity.draw(self.viewport, self.camera)
@@ -141,5 +191,8 @@ class Level:
         self.player.draw(self.viewport, self.camera)
 
         self.surface.blit(self.viewport, (0, 8*3))
+
+
+        self.camera.update(self.player.rect)
 
         return next_state
