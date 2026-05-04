@@ -61,6 +61,8 @@ class Player:
         self.pos: list[float] = list(pos)
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
         self.stage_size = stage_size
+        self.follow = None
+
 
         # Variable related to player physics
         self.y_momentum = 0
@@ -136,6 +138,9 @@ class Player:
         normal_tiles = [tile for tile in flattened_tiles if tile.type != TileType.LADDER]
         ladders = [ladder for ladder in flattened_tiles if ladder.type == TileType.LADDER]
 
+        if self.follow:
+            self.follow.path.append(self.rect.midbottom)
+
         collision_types = self.CollisionTypes()
         self.pos[0] += movement[0]
         self.rect.x = self.pos[0]
@@ -179,6 +184,8 @@ class Player:
                 collision_types.ladder = True
 
         return collision_types
+    
+    
     
     def get_current_frame(self) -> pygame.Surface:
         """
