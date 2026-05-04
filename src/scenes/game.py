@@ -37,6 +37,8 @@ class Game(Scene):
                     next_state = SceneState.CREDITS
                 else:
                     self.next_level()
+            case LevelState.GAME_OVER:
+                next_state = SceneState.GAME_OVER
             case LevelState.NO_CHANGE:
                 pass
 
