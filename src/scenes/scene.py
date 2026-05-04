@@ -9,6 +9,7 @@ class SceneState(Enum):
     CONTROLS = auto()
     GAME = auto()
     CREDITS = auto()
+    GAME_OVER = auto()
     QUIT = auto()
     """Quit the game"""
 

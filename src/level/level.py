@@ -9,11 +9,12 @@ Most of the gameplay takes place here.
 from enum import Enum, unique, auto
 import pygame
 
-import src.tileset as Tileset
+import src.tileset as Tileset 
+from src.tileset import TileType
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
-from src.entities.entity import Entity, EntityType
+from src.entities import Entity, EntityType, Spike, Ghost
 from src.guardian import Guardian
 
 """
@@ -29,6 +30,7 @@ Each level has the following components:
 class LevelState(Enum):
     NO_CHANGE = auto()
     NEXT_LEVEL = auto()     # Moves onto the next level
+    GAME_OVER = auto()
     QUIT = auto()
 
 @unique
@@ -128,8 +130,6 @@ class Level:
         next_state = LevelState.NO_CHANGE
 
         events = pygame.event.get()
-        self.guardian.update()
-        self.guardian.draw(self.viewport, self.camera)
 
         # Event handling can take place here
         for event in events:
@@ -159,13 +159,15 @@ class Level:
             case PlayerUpdateState.NO_CHANGE:
                 pass
             case PlayerUpdateState.DIED:
-                self.lives -= 1
+                self.lives = max(0, self.lives - 1)
                 if self.lives <=0:
                     next_state = LevelState.GAME_OVER # signal game over to game.py
                 else:
                     self.respawn() # sof reset, keep remaining lives
             case PlayerUpdateState.COMPLETED_LEVEL:
                 next_state = LevelState.NEXT_LEVEL
+
+        self.camera.update(self.player.rect)
 
         # Clear surface
         self.surface.fill((0, 0, 0))
@@ -186,6 +188,7 @@ class Level:
         self.guardian.draw(self.viewport, self.camera)
 
         for entity in self.entities:
+            entity.update(self.player.rect)
             entity.draw(self.viewport, self.camera)
 
         self.player.draw(self.viewport, self.camera)
@@ -193,6 +196,5 @@ class Level:
         self.surface.blit(self.viewport, (0, 8*3))
 
 
-        self.camera.update(self.player.rect)
 
         return next_state

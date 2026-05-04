@@ -32,6 +32,8 @@ async def main():
                 current_scene = Game(canvas)
             case SceneState.CREDITS:
                 current_scene = Credits(canvas)
+            case SceneState.GAME_OVER:
+                current_scene = GameOver(canvas)
             case SceneState.NO_CHANGE:
                 pass
             case _:
