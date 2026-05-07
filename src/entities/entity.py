@@ -9,6 +9,8 @@ class EntityType(Enum):
     SPIKE = auto()
     GATE = auto()
     GHOST = auto()
+    JEWEL = auto()
+    PROJECTILE = auto()
     UNKNOWN = auto()
 
     @staticmethod
@@ -22,6 +24,8 @@ class EntityType(Enum):
                 return EntityType.GATE
             case "ghost":
                 return EntityType.GHOST
+            case "jewel":
+                return EntityType.JEWEL
             case _:
                 return EntityType.UNKNOWN
             
@@ -34,7 +38,11 @@ class EntityType(Enum):
             case EntityType.GATE:
                 return TileType.DOOR
             case EntityType.GHOST:
-                return EntityType.GHOST
+                return TileType.GHOST
+            case EntityType.JEWEL:
+                return TileType.JEWEL
+            case EntityType.PROJECTILE:
+                return TileType.MAGIC
             case _:
                 return TileType.BOX
 

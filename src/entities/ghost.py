@@ -5,12 +5,15 @@ from src.tileset import TileType, TILE_SIZE
 from src.camera import Camera
 from src.entities.entity import Entity, EntityType
 from src.animator import Animator
+from src.constants import FPS
 
 @unique
 class GhostState(Enum):
     PATROLLING = auto() # floating left/right, ignoring player
     AGITATED = auto() # player detected, moving towards them faster
     ATTACKING = auto() # close enough, firing projectile
+    STUNNED = auto() # when ghost is hit by projectile
+    DYING = auto()
 
 class Ghost(Entity):
     # Movement speeds
@@ -24,6 +27,8 @@ class Ghost(Entity):
 
     # How far left/right from spawn the ghost patrols
     PATROL_RANGE = 4 * TILE_SIZE
+
+    STUN_DURATION = FPS * 2
 
     def __init__(self, x:int , y:int):
         super().__init__(x,y, EntityType.GHOST)
@@ -39,11 +44,17 @@ class Ghost(Entity):
 
         self.state = GhostState.PATROLLING
 
+        self.hits = 0
+        self.stun_timer = 0
+        self.collected = False  # True when hit twice, removed by level.py
+
         # Animator
-        self.animatons = {
+        self.animations = {
             GhostState.PATROLLING: Animator(frames=[TileType.GHOST.value], speed=20),
             GhostState.AGITATED:   Animator(frames=[TileType.GHOST.value], speed=10),
             GhostState.ATTACKING:  Animator(frames=[TileType.GHOST.value], speed=5),
+            GhostState.STUNNED: Animator(frames=[TileType.GHOST.value], speed=30),
+            GhostState.DYING: Animator(frames=[TileType.GHOST.value], speed=4)
         }
     def _distance_to_player(self, player_rect: pygame.Rect) -> float:
         """Calculate pixel distance between ghost center and player center"""
@@ -52,6 +63,22 @@ class Ghost(Entity):
         return (dx**2 + dy**2) ** 0.5 # Pythagoras Oh ive missed you!
     
     def update(self, player_rect: pygame.Rect):
+         # Handle dying state
+        if self.state == GhostState.DYING:
+            self.death_timer -= 1
+            if self.death_timer <= 0:
+                self.collected = True  # now actually remove it
+            self.animations[self.state].update()
+            return  # skip all movement while dying
+    
+        # Handle stun countdown
+        if self.state == GhostState.STUNNED:
+            self.stun_timer -= 1
+            if self.stun_timer <= 0:
+                self.state = GhostState.PATROLLING  # resume after stun
+            self.animations[self.state].update()
+            return  # skip all movement while stunned
+        
         distance = self._distance_to_player(player_rect)
 
         # State transitions
@@ -79,7 +106,9 @@ class Ghost(Entity):
                 self._chase(player_rect)
         
         # Tick the animator
-        self.animatons[self.state].update()
+        self.animations[self.state].update()
+
+
     
     def _patrol(self):
         """
@@ -124,18 +153,41 @@ class Ghost(Entity):
         self.x = int(self.pos[0])
         self.y = int(self.pos[1])
 
-    def draw(self, surface:pygame.Surface, camera:Camera):
-        camera_pos = camera.get_pos()
-        frame = self.animatons[self.state].get_frame()
+    def draw(self, surface: pygame.Surface, camera: Camera):
+        if self.collected:
+            return
 
-        # Flip sprite based on direction so ghost faces the player
+        camera_pos = camera.get_pos()
+        frame = self.animations[self.state].get_frame()
+
+        match self.state:
+            case GhostState.STUNNED:
+                # Alternate between grey and normal every 8 frames
+                if (self.stun_timer // 8) % 2 == 0:
+                    frame = Tileset.change_letter_color(frame, (100, 100, 255))  # blue tint when stunned
+                
+            case GhostState.DYING:
+                # Rapid flicker before disappearing
+                if self.death_timer % 4 < 2:
+                    return  # skip drawing every other 2 frames
+
         if self.direction == -1:
             frame = pygame.transform.flip(frame, True, False)
-        
-        surface.blit(frame,(
+
+        surface.blit(frame, (
             self.pos[0] - camera_pos[0],
             self.pos[1] - camera_pos[1]
         ))
+
+    def hit(self):
+        """Called when a projectile hits the ghost"""
+        self.hits += 1
+        if self.hits >= 2:
+            self.state = GhostState.DYING  # play death effect first
+            self.death_timer = FPS  # 1 second death animation
+        else:
+            self.state = GhostState.STUNNED
+            self.stun_timer = self.STUN_DURATION
 
 
 

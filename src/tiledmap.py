@@ -6,7 +6,7 @@ from enum import Enum, auto
 import src.tileset as Tileset
 from src.camera import Camera
 from src.tile import Tile, TileType
-from src.entities import Entity, EntityType, Spike, Ghost
+from src.entities import *
 
 type Tiles = list[list[Tile]]
 
@@ -175,6 +175,8 @@ class TiledMap:
                     entities.append(Spike(entity.x, entity.y, type, entity.rotation))
                 case EntityType.GHOST:
                     entities.append(Ghost(entity.x, entity.y))
+                case EntityType.JEWEL:
+                    entities.append(Jewel(entity.x, entity.y))
                 case _:
                     entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.type)))
 

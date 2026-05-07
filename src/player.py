@@ -7,6 +7,7 @@ from src.tileset import TILE_SIZE, TileType
 from src.tiledmap import Tiles, Tile
 from src.animator import Animator
 from src.entities.entity import Entity, EntityType
+from src.entities.ghost import GhostState
 from src.constants import FPS
 
 @unique
@@ -111,13 +112,11 @@ class Player:
             self.facing_right = False
         else:
             self.moving_left = False
-            self.facing_right = False
         if keys[pygame.K_RIGHT]:
             self.moving_right = True
             self.facing_right = True
         else:
             self.moving_right = False
-            self.facing_right = False
         
         self.climbing_up = keys[pygame.K_UP]
         self.climbing_down = keys[pygame.K_DOWN]
@@ -133,7 +132,7 @@ class Player:
                                 elif self.air_time < self.MAX_AIR_TIME:
                                     self.enter_jump_state()
 
-    def move(self, movement: list[float], tiles: Tiles) -> CollisionTypes:
+    def move(self, movement: list[float], tiles: Tiles, guardian_platform: pygame.Rect = None) -> CollisionTypes:
         flattened_tiles = [tile for row in tiles for tile in row]
         normal_tiles = [tile for tile in flattened_tiles if tile.type != TileType.LADDER]
         ladders = [ladder for ladder in flattened_tiles if ladder.type == TileType.LADDER]
@@ -142,9 +141,14 @@ class Player:
             self.follow.path.append(self.rect.midbottom)
 
         collision_types = self.CollisionTypes()
+
         self.pos[0] += movement[0]
         self.rect.x = self.pos[0]
         hit_list = collision_test(self.rect, normal_tiles)
+
+        if guardian_platform and self.rect.colliderect(guardian_platform):
+            hit_list.append(guardian_platform)
+
         for tile in hit_list:
             if movement[0] > 0:
                 self.rect.right = tile.left
@@ -167,6 +171,10 @@ class Player:
         self.pos[1] += movement[1]
         self.rect.y = self.pos[1]
         hit_list = collision_test(self.rect, normal_tiles)
+
+        if guardian_platform and self.rect.colliderect(guardian_platform):
+                hit_list.append(guardian_platform)
+
         for tile in hit_list:
             if movement[1] > 0:
                 self.rect.bottom = tile.top
@@ -196,7 +204,7 @@ class Player:
             frame = pygame.transform.flip(frame, True, False)
         return frame
 
-    def update(self, events: list[pygame.Event], tiles: Tiles, entities: list[Entity]) -> PlayerUpdateState:
+    def update(self, events: list[pygame.Event], tiles: Tiles, entities: list[Entity], guardian_platform=None) -> PlayerUpdateState:
         next_state = PlayerUpdateState.NO_CHANGE
 
         # If the player is dead, delay reseting the level using the timer
@@ -237,7 +245,7 @@ class Player:
             if self.y_momentum > self.MAX_MOMENTUM:
                 self.y_momentum = self.MAX_MOMENTUM
 
-        collisions = self.move(player_movement, tiles)
+        collisions = self.move(player_movement, tiles, guardian_platform)
 
         if collisions.ladder:
             self.change_state_to(PlayerState.CLIMBING)
@@ -265,12 +273,16 @@ class Player:
             self.y_momentum = 0
 
         # Check if the player has hit any entities
-        gate: Entity = list(filter(lambda e: e.type == EntityType.GATE, entities))[0]
-        if self.rect.colliderect(gate.rect):
-            next_state = PlayerUpdateState.COMPLETED_LEVEL
+        gates = [e for e in entities if e.type == EntityType.GATE]
+        if gates:
+            if self.rect.colliderect(gates[0].rect):
+                next_state = PlayerUpdateState.COMPLETED_LEVEL
 
+        HARMFUL = {EntityType.SPIKE, EntityType.GHOST}
         for entity in entities:
-            if entity == EntityType.GATE:
+            if entity.type not in HARMFUL:
+                continue
+            if hasattr(entity, 'state') and entity.state == GhostState.STUNNED:
                 continue
             if self.rect.colliderect(entity.rect):
                 self.change_state_to(PlayerState.DEAD)
