@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="128" height="27" tilewidth="8" tileheight="8" infinite="0" nextlayerid="5" nextobjectid="36">
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="128" height="27" tilewidth="8" tileheight="8" infinite="0" nextlayerid="5" nextobjectid="45">
  <tileset firstgid="1" name="tileset" tilewidth="8" tileheight="8" tilecount="256" columns="16">
   <image source="../../tileset.png" width="128" height="128"/>
  </tileset>
@@ -75,5 +75,6 @@
   <object id="29" type="ghost" gid="60" x="633" y="120.333" width="8" height="8"/>
   <object id="34" type="ghost" gid="60" x="841.667" y="111.333" width="8" height="8"/>
   <object id="35" type="ghost" gid="60" x="935.667" y="77.6667" width="8" height="8"/>
+  <object id="43" type="jewel" gid="63" x="154" y="126.333" width="8" height="8"/>
  </objectgroup>
 </map>

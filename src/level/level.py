@@ -14,8 +14,8 @@ from src.tileset import TileType
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
-from src.entities import Entity, EntityType, Spike, Ghost
-from src.guardian import Guardian
+from src.entities import *
+from src.guardian import Guardian, GuardianState
 
 """
 INTERNAL NOTES:
@@ -76,6 +76,10 @@ class Level:
         # Lives system - 3 is the starting amount
         self.MAX_LIVES = 3
         self.lives = self.MAX_LIVES
+
+        # Spirit charges
+        self.MAX_CHARGES = 3
+        self.charges = self.MAX_CHARGES
 
         # HUD banners — built once, not every frame
         self.level_banner = Tileset.render_string(f"Level: {level_no}")
@@ -142,6 +146,29 @@ class Level:
                             next_state = LevelState.QUIT
                         case pygame.K_BACKSPACE:
                             self.restart()
+                        case pygame.K_x:
+                            if self.charges > 0:
+                                player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
+                                player_vel = [
+                                    self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
+                                    self.player.y_momentum
+                                ]
+                                spent = self.guardian.activate_platform(
+                                    self.player.rect,
+                                    self.player.facing_right,
+                                    player_airborne,
+                                    player_vel
+                                )
+                                if spent:
+                                    self.charges -= 1
+                        case pygame.K_c:
+                            if self.charges > 0:
+                                projectile = self.guardian.fire_projectile(
+                                    self.player.rect,
+                                    self.player.facing_right
+                                )
+                                self.entities.append(projectile)
+                                self.charges -= 1
 
         tiles_rect = pygame.Rect(
             (self.player.rect.x//Tileset.TILE_SIZE) - 1, 
@@ -149,10 +176,14 @@ class Level:
             4, 
             4)
         adjecent_tiles = self.tilemap.get_tiles_rect(tiles_rect, self.LAYER_PLATFORM)
+        # build guardian platform rect if active
+        guardian_platform = self.guardian.rect if self.guardian.state == GuardianState.PLATFORM else None
+
         player_state = self.player.update(
             events, 
             adjecent_tiles, 
-            self.entities
+            self.entities,
+            guardian_platform
         )
 
         match player_state:
@@ -179,6 +210,15 @@ class Level:
         for i in range(self.lives):
             Tileset.render_tile(self.surface, heart, 20 + i, 0)
 
+        # Draw spirt charge orbs next to hearts
+        orb = Tileset.get_tile(TileType.JEWEL.value)
+        empty_orb = Tileset.change_letter_color(orb, (80, 80, 80))
+        for i in range(self.MAX_CHARGES):
+            if i < self.charges:
+                Tileset.render_tile(self.surface, orb, 24 + i, 0)
+            else:
+                Tileset.render_tile(self.surface, empty_orb, 24 + i, 0)
+    
         # Draw world layers
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND, (128, 128, 128))
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
@@ -190,6 +230,31 @@ class Level:
         for entity in self.entities:
             entity.update(self.player.rect)
             entity.draw(self.viewport, self.camera)
+        # Check projectile collisions
+        projectiles = [e for e in self.entities if e.type == EntityType.PROJECTILE]
+        ghosts = [e for e in self.entities if e.type == EntityType.GHOST]
+
+        for projectile in projectiles:
+            # Remove if off screen
+            if projectile.x < 0 or projectile.x > self.tilemap.width * Tileset.TILE_SIZE:
+                projectile.collected = True
+                continue
+
+            # Check against each ghost
+            for ghost in ghosts:
+                if not ghost.collected and projectile.rect.colliderect(ghost.rect):
+                    ghost.hit()
+                    projectile.collected = True
+                    break
+
+        # Remove collected projectiles and dead ghosts
+        for entity in self.entities:
+            if isinstance(entity, Jewel) and entity.collected:
+                self.charges = min(self.charges + 1, self.MAX_CHARGES)
+
+        # Now remove all collected entities in one pass
+        self.entities = [e for e in self.entities 
+                        if not getattr(e, 'collected', False)]
 
         self.player.draw(self.viewport, self.camera)
 
