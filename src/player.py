@@ -44,7 +44,7 @@ class Player:
     GRAVITY = 0.2
     MAX_MOMENTUM = 2
     VEL = 1
-    JUMP_HEIGHT = 18  # Let the player jump 18 pixels (or just above 2 tiles)
+    JUMP_HEIGHT = 10  # Let the player jump 15 pixels 
     MAX_AIR_TIME = 6
     MAX_WALL_JUMP_TIME = 36
     WALL_JUMP_HEIGHT = 14
@@ -282,7 +282,7 @@ class Player:
         for entity in entities:
             if entity.type not in HARMFUL:
                 continue
-            if hasattr(entity, 'state') and entity.state == GhostState.STUNNED:
+            if hasattr(entity, 'state') and entity.state  in (GhostState.STUNNED, GhostState.DYING):
                 continue
             if self.rect.colliderect(entity.rect):
                 self.change_state_to(PlayerState.DEAD)

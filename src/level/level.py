@@ -111,6 +111,7 @@ class Level:
         Only resets the player position and entities, lives stay the same.
         """
         # Rebuild the lives banner to reflect the new count
+        self.charges = self.MAX_CHARGES
         self.entities = self.tilemap.get_entities()
         self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
 
@@ -167,8 +168,9 @@ class Level:
                                     self.player.rect,
                                     self.player.facing_right
                                 )
-                                self.entities.append(projectile)
-                                self.charges -= 1
+                                if projectile is not None:
+                                    self.entities.append(projectile)
+                                    self.charges -= 1
 
         tiles_rect = pygame.Rect(
             (self.player.rect.x//Tileset.TILE_SIZE) - 1, 

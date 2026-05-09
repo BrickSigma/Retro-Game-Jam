@@ -133,12 +133,14 @@ class Guardian:
             self.rect.x - camera_pos[0],
             self.rect.y - camera_pos[1]
         ))
-        
+
     def fire_projectile(self, player_rect: pygame.Rect, facing_right: bool) -> 'Projectile':
         """
         Fire a projectile from the Guardian's current position.
         Returns the projectile so level.py can add it to entities.
         """
+        if self.state != GuardianState.FOLLOWING:
+            return None
         # Spawn at guardian center
         x = self.rect.centerx - TILE_SIZE // 2
         y = self.rect.centery - TILE_SIZE // 2
