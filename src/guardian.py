@@ -11,13 +11,21 @@ from enum import Enum, auto, unique
 class GuardianState(Enum):
     FOLLOWING = auto() # trailing the player normally
     PLATFORM = auto() # frozen solid, Player can stand on it
+    BOUNCE_PAD = auto()
     RETURNING = auto() # platform expired, floating back to player 
 
 class Guardian:
 
     PATH_MAX = 20 # frames behind the player
+    HOVER_OFFSET_X = 12  # pixels to the side of the player
+    HOVER_OFFSET_Y = -10  # pixels above the player
     PLATFORM_DURATION = FPS * 3 # 3 seconds at 60fps = 180 frames
     RETURN_SPEED = 2.0 # how fast guardian float back after platform expires
+    FLASH_DURATION = FPS * 3 # 3 second flash on upgrade
+    BOUNCE_FORCE = 4.5 # much higher than a normal jump
+
+    BLUE = (0,150,255)
+
 
     def __init__(self, player, pos: tuple[int, int]):
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
@@ -29,12 +37,20 @@ class Guardian:
         self._player_ref = player
 
         self.animations = {
-            GuardianState.FOLLOWING: Animator(frames=[TileType.GUARDIAN_IDLE.value], speed=20),
+            GuardianState.FOLLOWING: Animator(frames=[TileType.FIRE.value], speed=20),
             GuardianState.PLATFORM: Animator(frames=[TileType.PLATFORM.value], speed=10),
-            GuardianState.RETURNING: Animator(frames=[TileType.GUARDIAN_IDLE.value], speed=15)
+            GuardianState.BOUNCE_PAD: Animator(frames=[TileType.SPRING.value], speed=10),
+            GuardianState.RETURNING: Animator(frames=[TileType.FIRE.value], speed=15),
         }
 
         player.follow = self
+
+        # Upgrade system
+        self.upgraded        = False
+        self.flash_timer     = 0
+        self.can_move_platform = False
+        self.can_shield      = False
+        self.shield_active   = False
     
     def _get_platform_pos(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> tuple[int, int]:
         """
@@ -83,18 +99,33 @@ class Guardian:
         self.path.clear()  # clear path so it doesn't snap back when returning
 
         return True  # charge spent
+    
+    def trigger_upgrade(self):
+        """Called when player collects upgrade jewel"""
+        self.upgraded          = True
+        self.flash_timer       = self.FLASH_DURATION
+        self.can_move_platform = True
+        self.can_shield        = True
+
 
     def update(self):
         match self.state:
             case GuardianState.FOLLOWING:
-                # Original path following behaviour
                 if len(self.path) > self.PATH_MAX:
-                    new_pos = self.path.pop(0)
-                    self.rect.midbottom = new_pos
+                    target = self.path.pop(0)
+                    # Apply hover offset — float to the side and slightly above
+                    self.rect.centerx = target[0] + self.HOVER_OFFSET_X
+                    self.rect.centery = target[1] + self.HOVER_OFFSET_Y
                     self.pos = [float(self.rect.x), float(self.rect.y)]
 
             case GuardianState.PLATFORM:
                 # Count down platform duration
+                self._platform_timer -= 1
+                if self._platform_timer <= 0:
+                    self.path.clear()
+                    self.state = GuardianState.RETURNING
+            
+            case GuardianState.BOUNCE_PAD:
                 self._platform_timer -= 1
                 if self._platform_timer <= 0:
                     self.path.clear()
@@ -128,11 +159,54 @@ class Guardian:
         if self.state == GuardianState.PLATFORM:
             if self._platform_timer < FPS and self._platform_timer % 10 < 5:
                 return  # skip drawing every 5 frames to create flicker effect
+            
+        # upgrade flash - alternate between blue and normal every 8 frames
+        if self.flash_timer > 0:
+            self.flash_timer -= 1
+            if (self.flash_timer // 8) % 2 == 0:
+                frame = Tileset.change_letter_color(frame, self.BLUE)
+        elif self.upgraded:
+            # Permanently blue after flash settles
+            frame = Tileset.change_letter_color(frame, self.BLUE)
 
         surface.blit(frame, (
             self.rect.x - camera_pos[0],
             self.rect.y - camera_pos[1]
         ))
+    
+    def activate_shield(self) -> bool:
+        if not self.can_shield:
+            return False
+        if self.shield_active:
+            return False  # already shielded
+        self.shield_active = True
+        return True
+
+    def break_shield(self):
+        """Called when shield absorbs a hit"""
+        self.shield_active = False
+
+    def activate_bounce_pad(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> bool:
+        if self.state != GuardianState.FOLLOWING:
+            return False
+        if not self.can_move_platform:  # gated behind upgrade
+            return False
+
+        if player_airborne:
+            # Spawn directly below player
+            x = round(player_rect.centerx / TILE_SIZE) * TILE_SIZE - TILE_SIZE // 2
+            y = round((player_rect.bottom + TILE_SIZE) / TILE_SIZE) * TILE_SIZE
+        else:
+            # Spawn ahead of player
+            x, y = self._get_platform_pos(player_rect, facing_right, player_airborne, player_vel)
+
+        self.pos = [float(x), float(y)]
+        self.rect.x = x
+        self.rect.y = y
+        self.state = GuardianState.BOUNCE_PAD
+        self._platform_timer = FPS * 3  # disappears after 3 seconds or first bounce
+        self.path.clear()
+        return True
 
     def fire_projectile(self, player_rect: pygame.Rect, facing_right: bool) -> 'Projectile':
         """

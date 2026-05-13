@@ -97,12 +97,18 @@ class Level:
         the player position, camera position and state, and any entities are loaded.
         """
         self.lives = self.MAX_LIVES
+        self.charges = self.MAX_CHARGES
         self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
 
-        # Reloade entities fresh from the map so spikes/enemies are back in place
+        # Reset guardian upgrade on full restart
+        self.guardian.upgraded = False
+        self.guardian.can_move_platform = False
+        self.guardian.can_shield = False
+        self.guardian.shield_active = False
+        self.guardian.flash_timer = 0
+
         self.entities = self.tilemap.get_entities()
         self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
-
         self._respawn_player()
 
     def respawn(self):
@@ -127,6 +133,15 @@ class Level:
         self.player.rect.y = self.player_start.y
         self.player.state = PlayerState.IDLE
         self.player.y_momentum = 0
+        self.player._invulnerability_timer = 0  # clear any invulnerability on respawn
+
+        # Reset guardian upgrade on every death
+        self.guardian.upgraded = False
+        self.guardian.can_move_platform = False
+        self.guardian.can_shield = False
+        self.guardian.shield_active = False
+        self.guardian.flash_timer = 0
+        self.guardian.state = GuardianState.FOLLOWING
 
         if self.player.follow:
             self.player.follow.path.clear()
@@ -171,6 +186,26 @@ class Level:
                                 if projectile is not None:
                                     self.entities.append(projectile)
                                     self.charges -= 1
+                        case pygame.K_a:
+                            if self.charges > 0 and self.guardian.can_shield:
+                                spent = self.guardian.activate_shield()
+                                if spent:
+                                    self.charges -= 1
+                        case pygame.K_s:
+                            if self.charges > 0:
+                                player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
+                                player_vel = [
+                                    self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
+                                    self.player.y_momentum
+                                ]
+                                spent = self.guardian.activate_bounce_pad(
+                                    self.player.rect,
+                                    self.player.facing_right,
+                                    player_airborne,
+                                    player_vel
+                                )
+                                if spent:
+                                    self.charges -= 1
 
         tiles_rect = pygame.Rect(
             (self.player.rect.x//Tileset.TILE_SIZE) - 1, 
@@ -179,11 +214,14 @@ class Level:
             4)
         adjecent_tiles = self.tilemap.get_tiles_rect(tiles_rect, self.LAYER_PLATFORM)
         # build guardian platform rect if active
-        guardian_platform = self.guardian.rect if self.guardian.state == GuardianState.PLATFORM else None
+        if self.guardian.state in (GuardianState.PLATFORM, GuardianState.BOUNCE_PAD):
+            guardian_platform = self.guardian.rect
+        else:
+            guardian_platform = None
 
         player_state = self.player.update(
-            events, 
-            adjecent_tiles, 
+            events,
+            adjecent_tiles,
             self.entities,
             guardian_platform
         )
@@ -229,12 +267,20 @@ class Level:
         self.guardian.update()
         self.guardian.draw(self.viewport, self.camera)
 
+        new_entities = []
         for entity in self.entities:
-            entity.update(self.player.rect)
+            result = entity.update(self.player.rect)
+            # SpiderWeb returns a WebZone when it hits the player
+            if result is not None:
+                new_entities.append(result)
             entity.draw(self.viewport, self.camera)
+        self.entities.extend(new_entities)
         # Check projectile collisions
         projectiles = [e for e in self.entities if e.type == EntityType.PROJECTILE]
         ghosts = [e for e in self.entities if e.type == EntityType.GHOST]
+        webs = [e for e in self.entities if e.type == EntityType.SPIDER_WEB]
+        spiders = [e for e in self.entities if e.type == EntityType.SPIDER]
+        web_zones = [e for e in self.entities if e.type == EntityType.WEB_ZONE]
 
         for projectile in projectiles:
             # Remove if off screen
@@ -248,10 +294,27 @@ class Level:
                     ghost.hit()
                     projectile.collected = True
                     break
+            for spider in spiders:
+                if not spider.collected and projectile.rect.colliderect(spider.rect):
+                    spider.hit()
+                    projectile.collected = True
+                    break
+            # Destroy web zone
+            for web_zone in web_zones:
+                if not web_zone.collected and projectile.rect.colliderect(web_zone.rect):
+                    web_zone.collected = True
+                    projectile.collected = True
+                    break
 
-        # Remove collected projectiles and dead ghosts
+        # Handle upgrade jewel collection
         for entity in self.entities:
-            if isinstance(entity, Jewel) and entity.collected:
+            if isinstance(entity, UpgradeJewel) and entity.collected:
+                self.charges = self.MAX_CHARGES
+                self.guardian.trigger_upgrade()
+
+        # Handle regular jewel collection
+        for entity in self.entities:
+            if isinstance(entity, Jewel) and not isinstance(entity, UpgradeJewel) and entity.collected:
                 self.charges = min(self.charges + 1, self.MAX_CHARGES)
 
         # Now remove all collected entities in one pass
