@@ -11,6 +11,10 @@ class EntityType(Enum):
     GHOST = auto()
     JEWEL = auto()
     PROJECTILE = auto()
+    UPGRADE_JEWEL = auto()
+    SPIDER = auto()
+    SPIDER_WEB = auto()
+    WEB_ZONE = auto()
     UNKNOWN = auto()
 
     @staticmethod
@@ -26,6 +30,10 @@ class EntityType(Enum):
                 return EntityType.GHOST
             case "jewel":
                 return EntityType.JEWEL
+            case "upgrade_jewel":
+                return EntityType.UPGRADE_JEWEL
+            case "spider":
+                return EntityType.SPIDER
             case _:
                 return EntityType.UNKNOWN
             
@@ -43,6 +51,14 @@ class EntityType(Enum):
                 return TileType.JEWEL
             case EntityType.PROJECTILE:
                 return TileType.MAGIC
+            case EntityType.UPGRADE_JEWEL:
+                return TileType.JEWEL
+            case EntityType.SPIDER:
+                return TileType.SPIDER
+            case EntityType.SPIDER_WEB:
+                return TileType.SPIDER_LINE
+            case EntityType.WEB_ZONE:
+                return TileType.SPIDER_WEB
             case _:
                 return TileType.BOX
 

@@ -8,6 +8,7 @@ from src.tiledmap import Tiles, Tile
 from src.animator import Animator
 from src.entities.entity import Entity, EntityType
 from src.entities.ghost import GhostState
+from src.guardian import GuardianState
 from src.constants import FPS
 
 @unique
@@ -27,6 +28,8 @@ class PlayerState(Enum):
     WALL_JUMP = auto()
     DEAD = auto()
     CLIMBING = auto()
+    HANGING = auto()
+    HANGING_IDLE = auto()
 
 def collision_test(rect: pygame.Rect, tiles: list[Tile]) -> list[pygame.Rect]:
     hit_list = []
@@ -44,11 +47,15 @@ class Player:
     GRAVITY = 0.2
     MAX_MOMENTUM = 2
     VEL = 1
+    CLIMB_VEL = 0.6
+    HANG_VEL = 0.5 # I really don't want to understand how
     JUMP_HEIGHT = 10  # Let the player jump 15 pixels 
+    BOUNCE_FORCE = 4.5
     MAX_AIR_TIME = 6
     MAX_WALL_JUMP_TIME = 36
     WALL_JUMP_HEIGHT = 14
     DEATH_DELAY = FPS*3
+    INVULNERABILITY_DURATION = FPS * 2
 
     class CollisionTypes:
         def __init__(self):
@@ -57,12 +64,15 @@ class Player:
             self.left = False
             self.right = False
             self.ladder = False
+            self.chain = False
+            self.chain_y = False
 
     def __init__(self, pos, stage_size: tuple[int, int]):
         self.pos: list[float] = list(pos)
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
         self.stage_size = stage_size
         self.follow = None
+        self._ladder_exit_timer = 0
 
 
         # Variable related to player physics
@@ -88,6 +98,10 @@ class Player:
         self.climbing_up = False
         self.climbing_down = False
 
+        self._invulnerability_timer = 0
+
+        self.in_web = False  # tracks if player is inside a web zone
+
         # adding animation to player character
         self.animations = {
             PlayerState.IDLE: Animator(frames = [TileType.PLAYER_IDLE.value], speed = 20),
@@ -102,7 +116,15 @@ class Player:
             PlayerState.SLIDING: Animator(frames = [TileType.PLAYER_SLIDING.value], speed = 20),
             PlayerState.WALL_JUMP: Animator(frames = [TileType.PLAYER_ROPE_1.value], speed = 1),
             PlayerState.DEAD: Animator(frames=[TileType.PLAYER_DEAD.value], speed=1),
-            PlayerState.CLIMBING: Animator(frames=[TileType.PLAYER_CLIMB_1.value, TileType.PLAYER_CLIMB_2.value], speed=8)
+            PlayerState.CLIMBING: Animator(frames=[TileType.PLAYER_CLIMB_1.value, TileType.PLAYER_CLIMB_2.value], speed=8),
+            PlayerState.HANGING: Animator(frames=[
+                TileType.PLAYER_ROPE_1.value,
+                TileType.PLAYER_ROPE_2.value,
+                TileType.PLAYER_ROPE_3.value
+            ], speed=15),
+            PlayerState.HANGING_IDLE: Animator(frames=[
+                TileType.PLAYER_ROPE_1.value,
+            ], speed=1),
         }
     
     def _handle_events(self, events: list[pygame.Event]):
@@ -126,7 +148,11 @@ class Player:
                 case pygame.KEYDOWN:
                     match event.key:
                         case pygame.K_SPACE:
-                            if (self.state != PlayerState.JUMPING) and (self.state != PlayerState.WALL_JUMP) and (self.state != PlayerState.CLIMBING):
+                            if self.in_web:
+                                pass
+                            elif self.state in (PlayerState.HANGING, PlayerState.HANGING_IDLE):
+                                self.enter_jump_state()
+                            elif (self.state != PlayerState.JUMPING) and (self.state != PlayerState.WALL_JUMP) and (self.state != PlayerState.CLIMBING):
                                 if self.state == PlayerState.SLIDING or self.wall_jump_time < self.MAX_AIR_TIME*3:
                                     self.enter_wall_jump_state()
                                 elif self.air_time < self.MAX_AIR_TIME:
@@ -134,8 +160,11 @@ class Player:
 
     def move(self, movement: list[float], tiles: Tiles, guardian_platform: pygame.Rect = None) -> CollisionTypes:
         flattened_tiles = [tile for row in tiles for tile in row]
-        normal_tiles = [tile for tile in flattened_tiles if tile.type != TileType.LADDER]
+        normal_tiles = [tile for tile in flattened_tiles
+                         if tile.type != TileType.LADDER
+                         and tile.type != TileType.CHAIN]
         ladders = [ladder for ladder in flattened_tiles if ladder.type == TileType.LADDER]
+        chains = [chain for chain in flattened_tiles if chain.type == TileType.CHAIN]
 
         if self.follow:
             self.follow.path.append(self.rect.midbottom)
@@ -175,23 +204,33 @@ class Player:
         if guardian_platform and self.rect.colliderect(guardian_platform):
                 hit_list.append(guardian_platform)
 
+        self._on_bounce_pad = False  # reset each frame
         for tile in hit_list:
             if movement[1] > 0:
                 self.rect.bottom = tile.top
                 self.pos[1] = self.rect.y
                 collision_types.bottom = True
+                # Check if this tile is the guardian bounce pad
+                if guardian_platform and tile == guardian_platform:
+                    self._on_bounce_pad = True
             elif movement[1] < 0:
                 self.rect.top = tile.bottom
                 self.pos[1] = self.rect.y
                 collision_types.top = True
-
+        
         # Handle ladder mechanics
         hit_list = collision_test(self.rect, ladders)
-        for tile in hit_list:
-            if self.climbing_up or self.climbing_down:
-                collision_types.ladder = True
-
+        if hit_list:
+            collision_types.ladder = True
+        
+        chains =[tile for tile in flattened_tiles if tile.type == TileType.CHAIN]
+        hit_list = collision_test(self.rect, chains)
+        if hit_list:
+            collision_types.chain = True
+            collision_types.chain_y = hit_list[0].top
+            
         return collision_types
+    
     
     
     
@@ -219,6 +258,27 @@ class Player:
 
         player_movement = [0, 0]
 
+        # Check if player is in a web zone
+        self.in_web = any(
+            e.type == EntityType.WEB_ZONE and e.rect.colliderect(self.rect)
+            for e in entities
+        )
+        # Apply web slow if inside web zone
+        current_vel = self.VEL * 0.3 if self.in_web else self.VEL
+
+        if self.state in  (PlayerState.HANGING, PlayerState.HANGING_IDLE):
+            # No gravity while hanging
+            player_movement[1] = 0
+            self.y_momentum = 0
+            if self.moving_left:
+                player_movement[0] += self.HANG_VEL
+                self.change_state_to(PlayerState.HANGING)
+            elif self.moving_right:
+                player_movement[0] -= self.HANG_VEL
+                self.change_state_to(PlayerState.HANGING)
+            else:
+                self.change_state_to(PlayerState.HANGING_IDLE) 
+
         # Handle jumping from a wall first
         # This is to prevent the player from instantly moving back to the wall after jumping from it.
         if self.state == PlayerState.WALL_JUMP:
@@ -229,15 +289,16 @@ class Player:
         else:
             # Handle regular movement
             if self.moving_left:
-                player_movement[0] -= self.VEL
+                player_movement[0] -= current_vel
             elif self.moving_right:
-                player_movement[0] += self.VEL
+                player_movement[0] += current_vel
 
         if self.state == PlayerState.CLIMBING:
+            player_movement[0] = 0 # to ensure no horizontal movement while on the ladder 
             if self.climbing_up:
-                player_movement[1] -= self.VEL
+                player_movement[1] -= self.CLIMB_VEL
             elif self.climbing_down:
-                player_movement[1] += self.VEL
+                player_movement[1] += self.CLIMB_VEL
         else:
             player_movement[1] += self.y_momentum
             if not (self.state == PlayerState.SLIDING):
@@ -247,10 +308,19 @@ class Player:
 
         collisions = self.move(player_movement, tiles, guardian_platform)
 
+        if self._ladder_exit_timer > 0:
+            self._ladder_exit_timer -= 1
+
         if collisions.ladder:
-            self.change_state_to(PlayerState.CLIMBING)
+            if self._ladder_exit_timer == 0:
+                if self.climbing_up or self.climbing_down:
+                    self.change_state_to(PlayerState.CLIMBING)
+                    self.y_momentum = 0
+                # If not pressing anything, don't change state — let running/idle continue
         else:
-            if collisions.bottom:
+            if self.state == PlayerState.CLIMBING:
+                self.change_state_to(PlayerState.FALLING)
+            elif collisions.bottom:
                 self.y_momentum = 0.2
                 self.air_time = 0
                 if self.moving_left or self.moving_right:
@@ -266,11 +336,56 @@ class Player:
                     self.air_time += 1
                     if self.y_momentum > 1 or self.state == PlayerState.SLIDING:
                         self.change_state_to(PlayerState.FALLING)
+        
+        # Chain entry — only when airborne
+        if collisions.chain and self.state in (PlayerState.JUMPING, PlayerState.FALLING):
+            self.change_state_to(PlayerState.HANGING_IDLE)
+            # Snap player top to underside of chain
+            self.pos[1] = collisions.chain_y + 3
+            self.rect.y = int(self.pos[1])
+            self.y_momentum = 0
+
+        # Chain exit conditions
+        if self.state in  (PlayerState.HANGING, PlayerState.HANGING_IDLE):
+            if not collisions.chain:
+                # Reached end of chain — drop
+                self.change_state_to(PlayerState.FALLING)
+            # Down key drops the player
+            # (climbing_down reused since it's the same key)
+            if self.climbing_down:
+                self.change_state_to(PlayerState.FALLING)
+
+        if self.state == PlayerState.CLIMBING and collisions.bottom:
+            self.change_state_to(PlayerState.IDLE)
+            self.y_momentum = 0
+
+        # Exit from top — when climbing up and no longer overlapping ladder
+        if self.state == PlayerState.CLIMBING and not collisions.ladder:
+            self._ladder_exit_timer = 20  # 20 frames before can re-enter
+            self.change_state_to(PlayerState.IDLE)
+
+        if self.state == PlayerState.MOVING and not self.moving_left and not self.moving_right:
+            self.change_state_to(PlayerState.IDLE)
 
         self.wall_jump_time += 1
 
         if collisions.top:
             self.y_momentum = 0
+
+        if collisions.bottom:
+            if self._on_bounce_pad and self.follow and self.follow.state == GuardianState.BOUNCE_PAD:
+                # Launch player upward and destroy the pad
+                self.y_momentum = -self.BOUNCE_FORCE
+                self.change_state_to(PlayerState.JUMPING)
+                self.follow.state = GuardianState.RETURNING
+                self.follow.path.clear()
+            else:
+                self.y_momentum = 0.2
+                self.air_time = 0
+                if self.moving_left or self.moving_right:
+                    self.change_state_to(PlayerState.MOVING)
+                else:
+                    self.change_state_to(PlayerState.IDLE)
 
         # Check if the player has hit any entities
         gates = [e for e in entities if e.type == EntityType.GATE]
@@ -278,16 +393,26 @@ class Player:
             if self.rect.colliderect(gates[0].rect):
                 next_state = PlayerUpdateState.COMPLETED_LEVEL
 
-        HARMFUL = {EntityType.SPIKE, EntityType.GHOST}
+        HARMFUL = {EntityType.SPIKE, EntityType.GHOST, EntityType.SPIDER}
         for entity in entities:
             if entity.type not in HARMFUL:
                 continue
-            if hasattr(entity, 'state') and entity.state  in (GhostState.STUNNED, GhostState.DYING):
+            if hasattr(entity, 'state') and entity.state in (GhostState.STUNNED, GhostState.DYING):
                 continue
             if self.rect.colliderect(entity.rect):
-                self.change_state_to(PlayerState.DEAD)
+                if self.follow and self.follow.shield_active:
+                    # Shield absorbs the hit
+                    self.follow.break_shield()
+                    self._invulnerability_timer = self.INVULNERABILITY_DURATION
+                    # Stun the ghost on contact if it's a ghost
+                    if entity.type == EntityType.GHOST:
+                        entity.state = GhostState.STUNNED
+                        entity.stun_timer = entity.STUN_DURATION
+                elif self._invulnerability_timer > 0:
+                    pass  # still invulnerable
+                else:
+                    self.change_state_to(PlayerState.DEAD)
                 break
-
         if self.rect.y + self.rect.h > self.stage_size[1]*TILE_SIZE:
             next_state = PlayerUpdateState.DIED
 
@@ -298,9 +423,26 @@ class Player:
 
         self.animations[self.state].update()
         frame = self.get_current_frame()
-        surface.blit(frame, (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1]))
-        # pygame.draw.rect(surface, (255, 0, 0), (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1], 8, 8))
+        draw_x = self.rect.x - camera_pos[0]
+        draw_y = self.rect.y - camera_pos[1]
 
+        # Draw shield bubble around player if active
+        if self.follow and self.follow.shield_active:
+            pygame.draw.circle(
+                surface,
+                (100, 180, 255),
+                (int(draw_x + self.rect.width // 2),
+                int(draw_y + self.rect.height // 2)),
+                10, 2  # radius 10, thickness 2
+            )
+
+        # Flicker player during invulnerability window
+        if self._invulnerability_timer > 0:
+            self._invulnerability_timer -= 1
+            if self._invulnerability_timer % 6 < 3:
+                return  # skip drawing every 3 frames to create flicker
+
+        surface.blit(frame, (draw_x, draw_y))
 
     """
     State machine related functions below:
@@ -324,6 +466,10 @@ class Player:
 
         # Handle anything to do with the new state
         match new_state:
+            case PlayerState.CLIMBING:
+                # Snap player to nearest tile center horizontally
+                self.pos[0] = round(self.pos[0] / TILE_SIZE) * TILE_SIZE
+                self.rect.x = int(self.pos[0])
             case PlayerState.SLIDING:
                 self.wall_jump_right = not self.facing_right
             case PlayerState.DEAD:
