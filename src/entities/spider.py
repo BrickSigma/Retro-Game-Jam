@@ -130,6 +130,9 @@ class Spider(Entity):
 
     def hit(self):
         """Called when Guardian projectile hits the spider"""
+        if self.active_web is not None:
+            self.active_web.collected = True
+            self.active_web = None
         self.state = SpiderState.DEAD
         self.death_timer = self.DEATH_DURATION
 
@@ -170,7 +173,7 @@ class SpiderWeb(Entity):
             self.vel_x = 0
             self.vel_y = self.SPEED
 
-        self.animator = Animator(frames=[TileType.SPIDER_LINE.value], speed=8)
+        self.animator = Animator(frames=[TileType.COIN.value], speed=8)
 
     def update(self, player_rect: pygame.Rect) -> 'WebZone | None':
         """Returns a WebZone if it hit the player, None otherwise"""
@@ -185,9 +188,11 @@ class SpiderWeb(Entity):
 
         # Check hit with player
         if self.rect.colliderect(player_rect):
+            web_zone = WebZone(player_rect.x, player_rect.y)
+            self.spider.active_web = web_zone  # swap to zone so spider tracks its lifetime
+            self.spider.state = SpiderState.CHASING
             self.collected = True
-            self.spider.state = SpiderState.CHASING  # trigger chase
-            return WebZone(player_rect.x, player_rect.y)
+            return web_zone
 
         return None
 

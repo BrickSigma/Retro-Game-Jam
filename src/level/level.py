@@ -143,8 +143,6 @@ class Level:
         self.guardian.flash_timer = 0
         self.guardian.state = GuardianState.FOLLOWING
 
-        if self.player.follow:
-            self.player.follow.path.clear()
 
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
@@ -267,59 +265,63 @@ class Level:
         self.guardian.update()
         self.guardian.draw(self.viewport, self.camera)
 
+        player_is_dead = self.player.state == PlayerState.DEAD
+
         new_entities = []
         for entity in self.entities:
-            result = entity.update(self.player.rect)
-            # SpiderWeb returns a WebZone when it hits the player
-            if result is not None:
-                new_entities.append(result)
+            if not player_is_dead:
+                result = entity.update(self.player.rect)
+                if result is not None:
+                    new_entities.append(result)
             entity.draw(self.viewport, self.camera)
         self.entities.extend(new_entities)
-        # Check projectile collisions
-        projectiles = [e for e in self.entities if e.type == EntityType.PROJECTILE]
-        ghosts = [e for e in self.entities if e.type == EntityType.GHOST]
-        webs = [e for e in self.entities if e.type == EntityType.SPIDER_WEB]
-        spiders = [e for e in self.entities if e.type == EntityType.SPIDER]
-        web_zones = [e for e in self.entities if e.type == EntityType.WEB_ZONE]
 
-        for projectile in projectiles:
-            # Remove if off screen
-            if projectile.x < 0 or projectile.x > self.tilemap.width * Tileset.TILE_SIZE:
-                projectile.collected = True
-                continue
+        if not player_is_dead:
+            # Check projectile collisions
+            projectiles = [e for e in self.entities if e.type == EntityType.PROJECTILE]
+            ghosts = [e for e in self.entities if e.type == EntityType.GHOST]
+            webs = [e for e in self.entities if e.type == EntityType.SPIDER_WEB]
+            spiders = [e for e in self.entities if e.type == EntityType.SPIDER]
+            web_zones = [e for e in self.entities if e.type == EntityType.WEB_ZONE]
 
-            # Check against each ghost
-            for ghost in ghosts:
-                if not ghost.collected and projectile.rect.colliderect(ghost.rect):
-                    ghost.hit()
+            for projectile in projectiles:
+                # Remove if off screen
+                if projectile.x < 0 or projectile.x > self.tilemap.width * Tileset.TILE_SIZE:
                     projectile.collected = True
-                    break
-            for spider in spiders:
-                if not spider.collected and projectile.rect.colliderect(spider.rect):
-                    spider.hit()
-                    projectile.collected = True
-                    break
-            # Destroy web zone
-            for web_zone in web_zones:
-                if not web_zone.collected and projectile.rect.colliderect(web_zone.rect):
-                    web_zone.collected = True
-                    projectile.collected = True
-                    break
+                    continue
 
-        # Handle upgrade jewel collection
-        for entity in self.entities:
-            if isinstance(entity, UpgradeJewel) and entity.collected:
-                self.charges = self.MAX_CHARGES
-                self.guardian.trigger_upgrade()
+                # Check against each ghost
+                for ghost in ghosts:
+                    if not ghost.collected and projectile.rect.colliderect(ghost.rect):
+                        ghost.hit()
+                        projectile.collected = True
+                        break
+                for spider in spiders:
+                    if not spider.collected and projectile.rect.colliderect(spider.rect):
+                        spider.hit()
+                        projectile.collected = True
+                        break
+                # Destroy web zone
+                for web_zone in web_zones:
+                    if not web_zone.collected and projectile.rect.colliderect(web_zone.rect):
+                        web_zone.collected = True
+                        projectile.collected = True
+                        break
 
-        # Handle regular jewel collection
-        for entity in self.entities:
-            if isinstance(entity, Jewel) and not isinstance(entity, UpgradeJewel) and entity.collected:
-                self.charges = min(self.charges + 1, self.MAX_CHARGES)
+            # Handle upgrade jewel collection
+            for entity in self.entities:
+                if isinstance(entity, UpgradeJewel) and entity.collected:
+                    self.charges = self.MAX_CHARGES
+                    self.guardian.trigger_upgrade()
 
-        # Now remove all collected entities in one pass
-        self.entities = [e for e in self.entities 
-                        if not getattr(e, 'collected', False)]
+            # Handle regular jewel collection
+            for entity in self.entities:
+                if isinstance(entity, Jewel) and not isinstance(entity, UpgradeJewel) and entity.collected:
+                    self.charges = min(self.charges + 1, self.MAX_CHARGES)
+
+            # Now remove all collected entities in one pass
+            self.entities = [e for e in self.entities
+                            if not getattr(e, 'collected', False)]
 
         self.player.draw(self.viewport, self.camera)
 
