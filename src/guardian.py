@@ -1,3 +1,4 @@
+import math
 import pygame
 import src.tileset as Tileset
 from src.camera import Camera
@@ -16,9 +17,11 @@ class GuardianState(Enum):
 
 class Guardian:
 
-    PATH_MAX = 20 # frames behind the player
-    HOVER_OFFSET_X = 12  # pixels to the side of the player
+    HOVER_OFFSET_X = 12  # pixels to the side of the player (direction-aware)
     HOVER_OFFSET_Y = -10  # pixels above the player
+    FOLLOW_SPEED = 0.06  # lerp factor per frame (0 = never moves, 1 = instant snap)
+    BOB_AMPLITUDE = 2.0  # pixels of vertical sine-wave float
+    BOB_SPEED = 0.05     # radians per frame
     PLATFORM_DURATION = FPS * 3 # 3 seconds at 60fps = 180 frames
     RETURN_SPEED = 2.0 # how fast guardian float back after platform expires
     FLASH_DURATION = FPS * 3 # 3 second flash on upgrade
@@ -30,8 +33,8 @@ class Guardian:
     def __init__(self, player, pos: tuple[int, int]):
         self.rect = pygame.Rect(pos[0], pos[1], 8, 8)
         self.pos = [float(pos[0]), float(pos[1])]
-        self.path: list[tuple[int,int]] = []
         self.state = GuardianState.FOLLOWING
+        self._bob_timer = 0.0
 
         self._platform_timer = 0
         self._player_ref = player
@@ -96,8 +99,6 @@ class Guardian:
 
         self.state = GuardianState.PLATFORM
         self._platform_timer = self.PLATFORM_DURATION
-        self.path.clear()  # clear path so it doesn't snap back when returning
-
         return True  # charge spent
     
     def trigger_upgrade(self):
@@ -111,24 +112,25 @@ class Guardian:
     def update(self):
         match self.state:
             case GuardianState.FOLLOWING:
-                if len(self.path) > self.PATH_MAX:
-                    target = self.path.pop(0)
-                    # Apply hover offset — float to the side and slightly above
-                    self.rect.centerx = target[0] + self.HOVER_OFFSET_X
-                    self.rect.centery = target[1] + self.HOVER_OFFSET_Y
-                    self.pos = [float(self.rect.x), float(self.rect.y)]
+                self._bob_timer += self.BOB_SPEED
+                player_rect = self._player_ref.rect
+                side = 1 if self._player_ref.facing_right else -1
+                target_x = player_rect.centerx + side * self.HOVER_OFFSET_X - self.rect.width // 2
+                target_y = player_rect.centery + self.HOVER_OFFSET_Y + math.sin(self._bob_timer) * self.BOB_AMPLITUDE
+                self.pos[0] += (target_x - self.pos[0]) * self.FOLLOW_SPEED
+                self.pos[1] += (target_y - self.pos[1]) * self.FOLLOW_SPEED
+                self.rect.x = int(self.pos[0])
+                self.rect.y = int(self.pos[1])
 
             case GuardianState.PLATFORM:
                 # Count down platform duration
                 self._platform_timer -= 1
                 if self._platform_timer <= 0:
-                    self.path.clear()
                     self.state = GuardianState.RETURNING
-            
+
             case GuardianState.BOUNCE_PAD:
                 self._platform_timer -= 1
                 if self._platform_timer <= 0:
-                    self.path.clear()
                     self.state = GuardianState.RETURNING
 
             case GuardianState.RETURNING:
@@ -139,8 +141,6 @@ class Guardian:
                 distance = (dx**2 + dy**2) ** 0.5
 
                 if distance < TILE_SIZE:
-                    # Close enough — resume following
-                    self.path.clear()
                     self.state = GuardianState.FOLLOWING
                 else:
                     # Normalised movement toward player
@@ -205,7 +205,6 @@ class Guardian:
         self.rect.y = y
         self.state = GuardianState.BOUNCE_PAD
         self._platform_timer = FPS * 3  # disappears after 3 seconds or first bounce
-        self.path.clear()
         return True
 
     def fire_projectile(self, player_rect: pygame.Rect, facing_right: bool) -> 'Projectile':

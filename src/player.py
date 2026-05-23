@@ -166,9 +166,6 @@ class Player:
         ladders = [ladder for ladder in flattened_tiles if ladder.type == TileType.LADDER]
         chains = [chain for chain in flattened_tiles if chain.type == TileType.CHAIN]
 
-        if self.follow:
-            self.follow.path.append(self.rect.midbottom)
-
         collision_types = self.CollisionTypes()
 
         self.pos[0] += movement[0]
@@ -378,7 +375,6 @@ class Player:
                 self.y_momentum = -self.BOUNCE_FORCE
                 self.change_state_to(PlayerState.JUMPING)
                 self.follow.state = GuardianState.RETURNING
-                self.follow.path.clear()
             else:
                 self.y_momentum = 0.2
                 self.air_time = 0
@@ -441,6 +437,11 @@ class Player:
             self._invulnerability_timer -= 1
             if self._invulnerability_timer % 6 < 3:
                 return  # skip drawing every 3 frames to create flicker
+
+        # Flicker during death delay
+        if self.state == PlayerState.DEAD:
+            if self.death_timer % 6 < 3:
+                return
 
         surface.blit(frame, (draw_x, draw_y))
 
