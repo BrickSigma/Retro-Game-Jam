@@ -308,6 +308,26 @@ class Level:
                         projectile.collected = True
                         break
 
+            # Destroy spider web projectile if it hits a solid tile
+            for web in webs:
+                if web.collected:
+                    continue
+                web_tile_x = web.x // Tileset.TILE_SIZE
+                web_tile_y = web.y // Tileset.TILE_SIZE
+                tiles_around = self.tilemap.get_tiles_rect(
+                    pygame.Rect(web_tile_x - 1, web_tile_y - 1, 3, 3),
+                    self.LAYER_PLATFORM
+                )
+                for row in tiles_around:
+                    for tile in row:
+                        if tile.type in (TileType.NONE, TileType.LADDER, TileType.CHAIN):
+                            continue
+                        if web.rect.colliderect(tile.rect):
+                            web.collected = True
+                            break
+                    if web.collected:
+                        break
+
             # Handle upgrade jewel collection
             for entity in self.entities:
                 if isinstance(entity, UpgradeJewel) and entity.collected:
