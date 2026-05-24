@@ -316,6 +316,7 @@ class Player:
                 # If not pressing anything, don't change state — let running/idle continue
         else:
             if self.state == PlayerState.CLIMBING:
+                self._ladder_exit_timer = 20  # block re-entry for 20 frames
                 self.change_state_to(PlayerState.FALLING)
             elif collisions.bottom:
                 self.y_momentum = 0.2
@@ -355,11 +356,6 @@ class Player:
         if self.state == PlayerState.CLIMBING and collisions.bottom:
             self.change_state_to(PlayerState.IDLE)
             self.y_momentum = 0
-
-        # Exit from top — when climbing up and no longer overlapping ladder
-        if self.state == PlayerState.CLIMBING and not collisions.ladder:
-            self._ladder_exit_timer = 20  # 20 frames before can re-enter
-            self.change_state_to(PlayerState.IDLE)
 
         if self.state == PlayerState.MOVING and not self.moving_left and not self.moving_right:
             self.change_state_to(PlayerState.IDLE)
