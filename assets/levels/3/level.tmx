@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="128" height="27" tilewidth="8" tileheight="8" infinite="0" nextlayerid="5" nextobjectid="24">
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="128" height="27" tilewidth="8" tileheight="8" infinite="0" nextlayerid="5" nextobjectid="28">
  <tileset firstgid="1" name="tileset" tilewidth="8" tileheight="8" tilecount="256" columns="16">
   <image source="../../tileset.png" width="128" height="128"/>
  </tileset>
@@ -66,11 +66,18 @@
 </data>
  </layer>
  <objectgroup id="3" name="entities">
-  <object id="2" name="player" gid="77" x="64" y="96" width="8" height="8"/>
+  <object id="2" type="player" gid="77" x="64" y="96" width="8" height="8"/>
   <object id="16" name="gate" gid="58" x="992" y="48" width="8" height="8"/>
   <object id="18" name="spike" gid="90" x="856" y="128" width="8" height="8"/>
   <object id="20" name="spike" gid="90" x="864" y="128" width="8" height="8"/>
   <object id="21" name="spike" gid="90" x="872" y="128" width="8" height="8"/>
   <object id="22" name="spike" gid="90" x="880" y="128" width="8" height="8"/>
+  <object id="24" type="upgrade_jewel" gid="63" x="160.5" y="128" width="8" height="8">
+   <properties>
+    <property name="level" type="int" value="3"/>
+   </properties>
+  </object>
+  <object id="26" type="upgrade_jewel" gid="63" x="35.5" y="127.5" width="8" height="8"/>
+  <object id="27" type="ghost" gid="60" x="296.75" y="127.25" width="8" height="8"/>
  </objectgroup>
 </map>
