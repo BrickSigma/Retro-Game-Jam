@@ -34,6 +34,7 @@ class Spider(Entity):
         self.fire_timer  = self.FIRE_COOLDOWN  # start ready to fire
         self.death_timer = 0
         self.collected   = False
+        self.distracted  = False  # True while decoy is active
 
         # Reference to active web — only one web per spider at a time
         self.active_web  = None
@@ -146,6 +147,9 @@ class Spider(Entity):
         if self.state == SpiderState.DEAD:
             if self.death_timer % 4 < 2:
                 return
+
+        if self.distracted:
+            frame = Tileset.change_letter_color(frame, (130, 130, 130))
 
         surface.blit(frame, (
             self.pos[0] - camera_pos[0],

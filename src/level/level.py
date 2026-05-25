@@ -11,7 +11,7 @@ import pygame
 
 import src.tileset as Tileset
 from src.tileset import TileType
-from src.constants import resource_path
+from src.constants import resource_path, FPS
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
@@ -101,12 +101,15 @@ class Level:
         self.charges = self.MAX_CHARGES
         self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
 
-        # Reset guardian upgrade on full restart
-        self.guardian.upgraded = False
-        self.guardian.can_move_platform = False
-        self.guardian.can_shield = False
-        self.guardian.shield_active = False
-        self.guardian.flash_timer = 0
+        # Reset all guardian upgrades on full restart
+        self.guardian.upgraded_l2    = False
+        self.guardian.upgraded_l3    = False
+        self.guardian.can_shield     = False
+        self.guardian.can_bounce_pad = False
+        self.guardian.can_use_sword  = False
+        self.guardian.can_use_decoy  = False
+        self.guardian.shield_active  = False
+        self.guardian.flash_timer    = 0
 
         self.entities = self.tilemap.get_entities()
         self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
@@ -136,13 +139,16 @@ class Level:
         self.player.y_momentum = 0
         self.player._invulnerability_timer = 0  # clear any invulnerability on respawn
 
-        # Reset guardian upgrade on every death
-        self.guardian.upgraded = False
-        self.guardian.can_move_platform = False
-        self.guardian.can_shield = False
-        self.guardian.shield_active = False
-        self.guardian.flash_timer = 0
-        self.guardian.state = GuardianState.FOLLOWING
+        # Reset all guardian upgrades on death
+        self.guardian.upgraded_l2    = False
+        self.guardian.upgraded_l3    = False
+        self.guardian.can_shield     = False
+        self.guardian.can_bounce_pad = False
+        self.guardian.can_use_sword  = False
+        self.guardian.can_use_decoy  = False
+        self.guardian.shield_active  = False
+        self.guardian.flash_timer    = 0
+        self.guardian.state          = GuardianState.FOLLOWING
 
 
     def update(self) -> LevelState:
@@ -203,6 +209,18 @@ class Level:
                                     player_airborne,
                                     player_vel
                                 )
+                                if spent:
+                                    self.charges -= 1
+                        case pygame.K_m:
+                            if not self.player.wielding_sword:
+                                if self.charges > 0:
+                                    spent = self.guardian.activate_sword()
+                                    if spent:
+                                        self.charges -= 1
+                                        self.player.wielding_sword = True
+                        case pygame.K_n:
+                            if self.charges > 0:
+                                spent = self.guardian.activate_decoy()
                                 if spent:
                                     self.charges -= 1
 
@@ -268,10 +286,19 @@ class Level:
 
         player_is_dead = self.player.state == PlayerState.DEAD
 
+        # When decoy is active, enemies chase the guardian instead of the player
+        if self.guardian.state == GuardianState.DECOY:
+            enemy_target = self.guardian.rect
+        else:
+            enemy_target = self.player.rect
+
+        decoy_active = self.guardian.state == GuardianState.DECOY
         new_entities = []
         for entity in self.entities:
+            if entity.type in (EntityType.GHOST, EntityType.SPIDER):
+                entity.distracted = decoy_active
             if not player_is_dead:
-                result = entity.update(self.player.rect)
+                result = entity.update(enemy_target)
                 if result is not None:
                     new_entities.append(result)
             entity.draw(self.viewport, self.camera)
@@ -329,11 +356,33 @@ class Level:
                     if web.collected:
                         break
 
+            # Sword hit detection — triggers dying animation same as projectile kills
+            if self.player.sword_rect:
+                from src.entities.ghost import GhostState
+                for entity in self.entities:
+                    if entity.type not in (EntityType.GHOST, EntityType.SPIDER):
+                        continue
+                    if getattr(entity, 'collected', False):
+                        continue
+                    if entity.type == EntityType.GHOST and entity.state == GhostState.DYING:
+                        continue
+                    if entity.type == EntityType.SPIDER and entity.state.name == 'DEAD':
+                        continue
+                    if self.player.sword_rect.colliderect(entity.rect):
+                        if entity.type == EntityType.GHOST:
+                            entity.state = GhostState.DYING
+                            entity.death_timer = FPS
+                        elif entity.type == EntityType.SPIDER:
+                            entity.hit()
+
             # Handle upgrade jewel collection
             for entity in self.entities:
                 if isinstance(entity, UpgradeJewel) and entity.collected:
                     self.charges = self.MAX_CHARGES
-                    self.guardian.trigger_upgrade()
+                    if entity.level == 3:
+                        self.guardian.trigger_level3_upgrade()
+                    else:
+                        self.guardian.trigger_upgrade()
 
             # Handle regular jewel collection
             for entity in self.entities:

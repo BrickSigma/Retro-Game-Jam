@@ -1,9 +1,9 @@
 from enum import Enum, auto, unique
 import pygame
-from math import sqrt
+from math import sqrt, sin, pi
 
 from src.camera import Camera
-from src.tileset import TILE_SIZE, TileType
+from src.tileset import TILE_SIZE, TileType, get_tile, change_letter_color
 from src.tiledmap import Tiles, Tile
 from src.animator import Animator
 from src.entities.entity import Entity, EntityType
@@ -20,15 +20,15 @@ class PlayerUpdateState(Enum):
 @unique
 class PlayerState(Enum):
     """Used for handling the player states in its own internal state machine"""
-    IDLE = auto()
-    JUMPING = auto()
-    MOVING = auto()
-    FALLING = auto()
-    SLIDING = auto()
-    WALL_JUMP = auto()
-    DEAD = auto()
-    CLIMBING = auto()
-    HANGING = auto()
+    IDLE         = auto()
+    JUMPING      = auto()
+    MOVING       = auto()
+    FALLING      = auto()
+    SLIDING      = auto()
+    WALL_JUMP    = auto()
+    DEAD         = auto()
+    CLIMBING     = auto()
+    HANGING      = auto()
     HANGING_IDLE = auto()
 
 def collision_test(rect: pygame.Rect, tiles: list[Tile]) -> list[pygame.Rect]:
@@ -47,6 +47,7 @@ class Player:
     GRAVITY = 0.2
     MAX_MOMENTUM = 2
     VEL = 1
+    SWING_DURATION = 10
     CLIMB_VEL = 0.6
     HANG_VEL = 0.5 # I really don't want to understand how
     JUMP_HEIGHT = 10  # Let the player jump 15 pixels 
@@ -100,7 +101,12 @@ class Player:
 
         self._invulnerability_timer = 0
 
-        self.in_web = False  # tracks if player is inside a web zone
+        self.in_web = False
+
+        self._swing_timer  = 0
+        self.sword_rect    = None
+        self.wielding_sword  = False
+        self.sword_swinging  = False
 
         # adding animation to player character
         self.animations = {
@@ -157,6 +163,10 @@ class Player:
                                     self.enter_wall_jump_state()
                                 elif self.air_time < self.MAX_AIR_TIME:
                                     self.enter_jump_state()
+                        case pygame.K_m:
+                            if self.wielding_sword and not self.sword_swinging:
+                                self.sword_swinging = True
+                                self._swing_timer = self.SWING_DURATION
 
     def move(self, movement: list[float], tiles: Tiles, guardian_platform: pygame.Rect = None) -> CollisionTypes:
         flattened_tiles = [tile for row in tiles for tile in row]
@@ -379,6 +389,29 @@ class Player:
                 else:
                     self.change_state_to(PlayerState.IDLE)
 
+        # Sword stab — independent of physics state so it never gets overridden
+        if self.wielding_sword:
+            if self.sword_swinging:
+                self._swing_timer -= 1
+                # Hitbox covers the full 120° arc beside the player
+                if self.facing_right:
+                    self.sword_rect = pygame.Rect(self.rect.right, self.rect.centery - TILE_SIZE, TILE_SIZE + 4, TILE_SIZE * 2)
+                else:
+                    self.sword_rect = pygame.Rect(self.rect.left - TILE_SIZE - 4, self.rect.centery - TILE_SIZE, TILE_SIZE + 4, TILE_SIZE * 2)
+                if self._swing_timer <= 0:
+                    self.sword_swinging = False
+                    self.sword_rect = None
+            else:
+                self.sword_rect = None
+
+            # Auto-exit when guardian drops SWORD state
+            if not self.follow or self.follow.state != GuardianState.SWORD:
+                self.wielding_sword = False
+                self.sword_swinging = False
+                self.sword_rect = None
+        else:
+            self.sword_rect = None
+
         # Check if the player has hit any entities
         gates = [e for e in entities if e.type == EntityType.GATE]
         if gates:
@@ -389,6 +422,8 @@ class Player:
         for entity in entities:
             if entity.type not in HARMFUL:
                 continue
+            if getattr(entity, 'distracted', False):
+                continue  # enemy is chasing the decoy, passes through player
             if hasattr(entity, 'state') and entity.state in (GhostState.STUNNED, GhostState.DYING):
                 continue
             if self.rect.colliderect(entity.rect):
@@ -440,6 +475,38 @@ class Player:
                 return
 
         surface.blit(frame, (draw_x, draw_y))
+
+        if self.wielding_sword and self.follow:
+            self._draw_sword_overlay(surface, draw_x, draw_y)
+
+    def _draw_sword_overlay(self, surface: pygame.Surface, draw_x: int, draw_y: int):
+        sword_tile = get_tile(TileType.SWORD.value)
+        tint = self.follow.GOLD if self.follow.upgraded_l3 else self.follow.BLUE
+        sword_tile = change_letter_color(sword_tile, tint)
+
+        if self.facing_right:
+            sword_tile = pygame.transform.flip(sword_tile, True, False)
+
+        # Swing arc: 60° above horizontal → 60° below horizontal (120° total)
+        if self.sword_swinging:
+            progress = 1.0 - self._swing_timer / self.SWING_DURATION
+            angle = 60 - progress * 120
+        else:
+            angle = 0  # hold horizontal
+
+        _SCALE = 4
+        big = pygame.transform.scale(sword_tile, (TILE_SIZE * _SCALE, TILE_SIZE * _SCALE))
+        rotated_big = pygame.transform.rotate(big, angle)
+        rotated = pygame.transform.scale(rotated_big, (rotated_big.get_width() // _SCALE, rotated_big.get_height() // _SCALE))
+
+        # Pivot at the player's hand (just outside the player edge, vertically centred)
+        if self.facing_right:
+            cx = draw_x + TILE_SIZE + 2
+        else:
+            cx = draw_x - 2
+        cy = draw_y + TILE_SIZE // 2
+
+        surface.blit(rotated, (cx - rotated.get_width() // 2, cy - rotated.get_height() // 2))
 
     """
     State machine related functions below:

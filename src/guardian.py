@@ -10,10 +10,12 @@ from enum import Enum, auto, unique
 
 @unique
 class GuardianState(Enum):
-    FOLLOWING = auto() # trailing the player normally
-    PLATFORM = auto() # frozen solid, Player can stand on it
+    FOLLOWING  = auto()
+    PLATFORM   = auto()
     BOUNCE_PAD = auto()
-    RETURNING = auto() # platform expired, floating back to player 
+    RETURNING  = auto()
+    SWORD      = auto()
+    DECOY      = auto()
 
 class Guardian:
 
@@ -22,12 +24,15 @@ class Guardian:
     FOLLOW_SPEED = 0.06  # lerp factor per frame (0 = never moves, 1 = instant snap)
     BOB_AMPLITUDE = 2.0  # pixels of vertical sine-wave float
     BOB_SPEED = 0.05     # radians per frame
-    PLATFORM_DURATION = FPS * 3 # 3 seconds at 60fps = 180 frames
-    RETURN_SPEED = 2.0 # how fast guardian float back after platform expires
-    FLASH_DURATION = FPS * 3 # 3 second flash on upgrade
-    BOUNCE_FORCE = 4.5 # much higher than a normal jump
+    PLATFORM_DURATION = FPS * 3
+    RETURN_SPEED = 2.0
+    FLASH_DURATION = FPS * 3
+    BOUNCE_FORCE = 4.5
+    SWORD_DURATION = FPS * 4
+    DECOY_DURATION = FPS * 3
 
     BLUE = (0,150,255)
+    GOLD = (255,215,0)
 
 
     def __init__(self, player, pos: tuple[int, int]):
@@ -40,20 +45,42 @@ class Guardian:
         self._player_ref = player
 
         self.animations = {
-            GuardianState.FOLLOWING: Animator(frames=[TileType.FIRE.value], speed=20),
-            GuardianState.PLATFORM: Animator(frames=[TileType.PLATFORM.value], speed=10),
-            GuardianState.BOUNCE_PAD: Animator(frames=[TileType.SPRING.value], speed=10),
-            GuardianState.RETURNING: Animator(frames=[TileType.FIRE.value], speed=15),
+            GuardianState.FOLLOWING:  Animator(frames=[TileType.FIRE.value],         speed=20),
+            GuardianState.PLATFORM:   Animator(frames=[TileType.PLATFORM.value],     speed=10),
+            GuardianState.BOUNCE_PAD: Animator(frames=[TileType.SPRING.value],       speed=10),
+            GuardianState.RETURNING:  Animator(frames=[TileType.FIRE.value],         speed=15),
+            GuardianState.SWORD:      Animator(frames=[TileType.SWORD.value],        speed=1),
+            GuardianState.DECOY:      Animator(frames=[
+                TileType.PLAYER_RUN_1.value,
+                TileType.PLAYER_RUN_2.value,
+                TileType.PLAYER_RUN_3.value,
+                TileType.PLAYER_RUN_4.value,
+            ], speed=6),
         }
 
         player.follow = self
 
-        # Upgrade system
-        self.upgraded        = False
-        self.flash_timer     = 0
-        self.can_move_platform = False
-        self.can_shield      = False
-        self.shield_active   = False
+        # Level 2 upgrade flags
+        self.upgraded_l2    = False
+        self.can_shield     = False
+        self.can_bounce_pad = False
+
+        # Level 3 upgrade flags
+        self.upgraded_l3    = False
+        self.can_use_sword  = False
+        self.can_use_decoy  = False
+
+        self.shield_active  = False
+        self.flash_timer    = 0
+        self.flash_color    = self.BLUE
+
+        self._sword_timer        = 0
+        self._decoy_timer        = 0
+        self._decoy_pos          = [0.0, 0.0]
+        self._decoy_y_vel        = 0.0
+        self._decoy_ground_y     = 0.0
+        self._decoy_spawn_x      = 0.0
+        self._decoy_facing_right = True
     
     def _get_platform_pos(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> tuple[int, int]:
         """
@@ -102,11 +129,45 @@ class Guardian:
         return True  # charge spent
     
     def trigger_upgrade(self):
-        """Called when player collects upgrade jewel"""
-        self.upgraded          = True
-        self.flash_timer       = self.FLASH_DURATION
-        self.can_move_platform = True
-        self.can_shield        = True
+        """Level 2 upgrade — blue tint, unlocks shield and bounce pad"""
+        self.upgraded_l2    = True
+        self.flash_timer    = self.FLASH_DURATION
+        self.flash_color    = self.BLUE
+        self.can_shield     = True
+        self.can_bounce_pad = True
+
+    def trigger_level3_upgrade(self):
+        """Level 3 upgrade — gold tint, unlocks sword and decoy"""
+        self.upgraded_l3   = True
+        self.flash_timer   = self.FLASH_DURATION
+        self.flash_color   = self.GOLD
+        self.can_use_sword = True
+        self.can_use_decoy = True
+
+    def activate_sword(self) -> bool:
+        """Transform Guardian into a sword. Returns True if a charge should be spent."""
+        if self.state != GuardianState.FOLLOWING:
+            return False
+        if not self.can_use_sword:
+            return False
+        self.state = GuardianState.SWORD
+        self._sword_timer = self.SWORD_DURATION
+        return True
+
+    def activate_decoy(self) -> bool:
+        """Detach Guardian as a decoy that patrols the ground. Returns True if a charge should be spent."""
+        if self.state != GuardianState.FOLLOWING:
+            return False
+        if not self.can_use_decoy:
+            return False
+        self.state = GuardianState.DECOY
+        self._decoy_timer        = self.DECOY_DURATION
+        self._decoy_pos          = [float(self.rect.x), float(self.rect.y)]
+        self._decoy_y_vel        = 0.0
+        self._decoy_ground_y     = float(self._player_ref.rect.y)
+        self._decoy_spawn_x      = float(self.rect.x)
+        self._decoy_facing_right = self._player_ref.facing_right
+        return True
 
 
     def update(self):
@@ -134,7 +195,6 @@ class Guardian:
                     self.state = GuardianState.RETURNING
 
             case GuardianState.RETURNING:
-                # Float back toward player
                 player_rect = self._player_ref.rect
                 dx = player_rect.centerx - self.rect.centerx
                 dy = player_rect.centery - self.rect.centery
@@ -143,11 +203,47 @@ class Guardian:
                 if distance < TILE_SIZE:
                     self.state = GuardianState.FOLLOWING
                 else:
-                    # Normalised movement toward player
                     self.pos[0] += (dx / distance) * self.RETURN_SPEED
                     self.pos[1] += (dy / distance) * self.RETURN_SPEED
                     self.rect.x = int(self.pos[0])
                     self.rect.y = int(self.pos[1])
+
+            case GuardianState.SWORD:
+                player_rect = self._player_ref.rect
+                offset_x = 10 if self._player_ref.facing_right else -10
+                self.rect.x = player_rect.x + offset_x
+                self.rect.y = player_rect.y
+                self.pos = [float(self.rect.x), float(self.rect.y)]
+
+                self._sword_timer -= 1
+                if self._sword_timer <= 0:
+                    self.state = GuardianState.RETURNING
+
+            case GuardianState.DECOY:
+                PATROL_SPEED = 0.5
+                PATROL_RANGE = 3 * TILE_SIZE
+
+                # Gravity — fall until hitting ground level
+                self._decoy_y_vel = min(self._decoy_y_vel + 0.3, 3.0)
+                self._decoy_pos[1] = min(self._decoy_pos[1] + self._decoy_y_vel, self._decoy_ground_y)
+                if self._decoy_pos[1] >= self._decoy_ground_y:
+                    self._decoy_y_vel = 0.0
+
+                # Left/right patrol, flip direction at boundaries
+                patrol_dir = 1 if self._decoy_facing_right else -1
+                self._decoy_pos[0] += PATROL_SPEED * patrol_dir
+                if self._decoy_pos[0] >= self._decoy_spawn_x + PATROL_RANGE:
+                    self._decoy_facing_right = False
+                elif self._decoy_pos[0] <= self._decoy_spawn_x - PATROL_RANGE:
+                    self._decoy_facing_right = True
+
+                self.rect.x = int(self._decoy_pos[0])
+                self.rect.y = int(self._decoy_pos[1])
+                self.pos = [float(self.rect.x), float(self.rect.y)]
+
+                self._decoy_timer -= 1
+                if self._decoy_timer <= 0:
+                    self.state = GuardianState.RETURNING
 
         self.animations[self.state].update()
 
@@ -160,13 +256,27 @@ class Guardian:
             if self._platform_timer < FPS and self._platform_timer % 10 < 5:
                 return  # skip drawing every 5 frames to create flicker effect
             
-        # upgrade flash - alternate between blue and normal every 8 frames
+        # Sword is rendered as a player overlay in player.py
+        if self.state == GuardianState.SWORD:
+            return
+
+        # Decoy — red-tinted player sprite with run animation
+        if self.state == GuardianState.DECOY:
+            frame = self.animations[self.state].get_frame()
+            frame = Tileset.change_letter_color(frame, self.GOLD)
+            if not self._decoy_facing_right:
+                frame = pygame.transform.flip(frame, True, False)
+            surface.blit(frame, (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1]))
+            return
+
+        # Upgrade flash — uses flash_color set by whichever upgrade triggered it
         if self.flash_timer > 0:
             self.flash_timer -= 1
             if (self.flash_timer // 8) % 2 == 0:
-                frame = Tileset.change_letter_color(frame, self.BLUE)
-        elif self.upgraded:
-            # Permanently blue after flash settles
+                frame = Tileset.change_letter_color(frame, self.flash_color)
+        elif self.upgraded_l3:
+            frame = Tileset.change_letter_color(frame, self.GOLD)
+        elif self.upgraded_l2:
             frame = Tileset.change_letter_color(frame, self.BLUE)
 
         surface.blit(frame, (
@@ -189,7 +299,7 @@ class Guardian:
     def activate_bounce_pad(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> bool:
         if self.state != GuardianState.FOLLOWING:
             return False
-        if not self.can_move_platform:  # gated behind upgrade
+        if not self.can_bounce_pad:  # gated behind upgrade
             return False
 
         if player_airborne:

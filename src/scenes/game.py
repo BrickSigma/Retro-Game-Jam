@@ -15,9 +15,10 @@ class Game(Scene):
         self.levels = [
             Level(self.surface, 1),
             Level(self.surface, 2, CameraState.VERTICAL),
+            Level(self.surface, 3)
         ]
 
-        self.current_level = 0
+        self.current_level = 2
         self.level = self.levels[self.current_level]
 
     def next_level(self):

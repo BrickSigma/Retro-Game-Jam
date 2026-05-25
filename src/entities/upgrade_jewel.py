@@ -11,15 +11,19 @@ class UpgradeJewel(Entity):
     BOB_HEIGHT = 1
     PULSE_SPEED = 0.05
 
-    BLUE = (0, 150, 255)
+    BLUE = (0, 150, 255) # level 2 upgrade
+    GOLD = (255,215,0) # level 3 upgrade
 
-    def __init__(self, x: int, y: int):
+    def __init__(self, x: int, y: int, level: int = 2):
         super().__init__(x, y, EntityType.UPGRADE_JEWEL)
         self.pos = [float(x), float(y)]
         self.spawn_y = float(y)
         self._bob_timer = 0.0
         self._pulse_timer = 0.0
         self.collected = False
+        self.level = level
+
+        self.color = self.BLUE if level == 2 else self.GOLD
 
         self.animator = Animator(
             frames=[TileType.JEWEL.value],
@@ -47,7 +51,7 @@ class UpgradeJewel(Entity):
         frame = self.animator.get_frame()
 
         #Blue tint
-        frame = Tileset.change_letter_color(frame, self.BLUE)
+        frame = Tileset.change_letter_color(frame, self.color)
 
         scale = int(8 + abs(math.sin(self._pulse_timer)) * 4)
         frame = pygame.transform.scale(frame, (scale, scale))

@@ -47,6 +47,7 @@ class Ghost(Entity):
         self.hits = 0
         self.stun_timer = 0
         self.collected = False  # True when hit twice, removed by level.py
+        self.distracted = False  # True while decoy is active
 
         # Animator
         self.animations = {
@@ -170,6 +171,9 @@ class Ghost(Entity):
                 # Rapid flicker before disappearing
                 if self.death_timer % 4 < 2:
                     return  # skip drawing every other 2 frames
+
+        if self.distracted:
+            frame = Tileset.change_letter_color(frame, (130, 130, 130))
 
         if self.direction == -1:
             frame = pygame.transform.flip(frame, True, False)
