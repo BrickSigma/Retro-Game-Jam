@@ -129,19 +129,19 @@ class Player:
     
     def _handle_events(self, events: list[pygame.Event]):
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
+        if keys[pygame.K_a]:
             self.moving_left = True
             self.facing_right = False
         else:
             self.moving_left = False
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_d]:
             self.moving_right = True
             self.facing_right = True
         else:
             self.moving_right = False
         
-        self.climbing_up = keys[pygame.K_UP]
-        self.climbing_down = keys[pygame.K_DOWN]
+        self.climbing_up = keys[pygame.K_w]
+        self.climbing_down = keys[pygame.K_s]
 
         for event in events:
             match event.type:

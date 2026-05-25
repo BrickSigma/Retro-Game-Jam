@@ -9,8 +9,9 @@ Most of the gameplay takes place here.
 from enum import Enum, unique, auto
 import pygame
 
-import src.tileset as Tileset 
+import src.tileset as Tileset
 from src.tileset import TileType
+from src.constants import resource_path
 from src.camera import Camera, CameraState
 from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
@@ -48,7 +49,7 @@ class Level:
     def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
         self.surface = surface
         self.level_no = level_no
-        self.level_folder = f"./assets/levels/{self.level_no}"
+        self.level_folder = resource_path(f"assets/levels/{self.level_no}")
 
         """
         Every item in the game is dependant on the player's position,
@@ -160,7 +161,7 @@ class Level:
                             next_state = LevelState.QUIT
                         case pygame.K_BACKSPACE:
                             self.restart()
-                        case pygame.K_x:
+                        case pygame.K_l:
                             if self.charges > 0:
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
@@ -175,7 +176,7 @@ class Level:
                                 )
                                 if spent:
                                     self.charges -= 1
-                        case pygame.K_c:
+                        case pygame.K_k:
                             if self.charges > 0:
                                 projectile = self.guardian.fire_projectile(
                                     self.player.rect,
@@ -184,12 +185,12 @@ class Level:
                                 if projectile is not None:
                                     self.entities.append(projectile)
                                     self.charges -= 1
-                        case pygame.K_a:
+                        case pygame.K_p:
                             if self.charges > 0 and self.guardian.can_shield:
                                 spent = self.guardian.activate_shield()
                                 if spent:
                                     self.charges -= 1
-                        case pygame.K_s:
+                        case pygame.K_o:
                             if self.charges > 0:
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
