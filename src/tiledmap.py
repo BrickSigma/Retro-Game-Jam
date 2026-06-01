@@ -146,11 +146,14 @@ class TiledMap:
 
     def get_tiles_rect(self, rect: pygame.Rect, layer: str) -> Tiles:
         """
-        Return a region of the tile map. 
+        Return a region of the tile map.
         This is useful for tile collision detection.
 
         `rect`: should be a tuple with (x, y, w, h) values
+        Returns None if the layer doesn't exist.
         """
+        if layer not in self.layers:
+            return None
 
         tiles: list[list[Tile]] = []
         for y in range(0, rect.h):
