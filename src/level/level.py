@@ -43,9 +43,28 @@ class MapTiles(Enum):
     RAMP_RIGHT = 3
 
 class Level:
-    LAYER_PLATFORM   = "platform"   # solid tiles the player walks on
-    LAYER_ITEMS      = "items"      # collectibles and interactables (optional)
-    LAYER_BACKGROUND = "background" # non-collidable backdrop tiles (optional)
+    PALETTE = {
+        'green':  (120, 131, 116),
+        'cream':  (245, 233, 191),
+        'red':    (170, 100, 77),
+        'purple': (55, 42, 57),
+    }
+
+    LAYER_PLATFORM_GREEN  = "platform_green"
+    LAYER_PLATFORM_CREAM  = "platform_cream"
+    LAYER_PLATFORM_RED    = "platform_red"
+    LAYER_PLATFORM_PURPLE = "platform_purple"
+
+    LAYER_BG_GREEN  = "background_green"
+    LAYER_BG_CREAM  = "background_cream"
+    LAYER_BG_RED    = "background_red"
+    LAYER_BG_PURPLE = "background_purple"
+
+    LAYER_ITEMS = "items"
+
+    # Legacy layer names — kept for levels not yet migrated to palette naming
+    LAYER_PLATFORM   = "platform"
+    LAYER_BACKGROUND = "background"
     LAYER_BACKGROUND2 = "background2"
 
     def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
@@ -151,6 +170,36 @@ class Level:
                     break
         else:
             self._respawn_player()
+
+    def _get_all_platform_tiles(self, tiles_rect: pygame.Rect):
+        platform_layers = [
+            self.LAYER_PLATFORM,
+            self.LAYER_PLATFORM_GREEN,
+            self.LAYER_PLATFORM_CREAM,
+            self.LAYER_PLATFORM_RED,
+            self.LAYER_PLATFORM_PURPLE,
+        ]
+
+        combined = self.tilemap.get_tiles_rect(tiles_rect, platform_layers[0])
+
+        if combined is None:
+            from src.tile import Tile, TileType as TT
+            combined = [
+                [Tile(tiles_rect.x + x, tiles_rect.y + y, TT.NONE, False, False)
+                 for x in range(tiles_rect.w)]
+                for y in range(tiles_rect.h)
+            ]
+
+        for layer_name in platform_layers[1:]:
+            layer_tiles = self.tilemap.get_tiles_rect(tiles_rect, layer_name)
+            if layer_tiles is None:
+                continue
+            for y in range(len(combined)):
+                for x in range(len(combined[y])):
+                    if layer_tiles[y][x].type != TileType.NONE:
+                        combined[y][x] = layer_tiles[y][x]
+
+        return combined
 
     def _respawn_player(self):
         """
@@ -291,7 +340,7 @@ class Level:
             (self.player.rect.y//Tileset.TILE_SIZE) - 1, 
             4, 
             4)
-        adjecent_tiles = self.tilemap.get_tiles_rect(tiles_rect, self.LAYER_PLATFORM)
+        adjecent_tiles = self._get_all_platform_tiles(tiles_rect)
         # build guardian platform rect if active
         if self.guardian.state in (GuardianState.PLATFORM, GuardianState.BOUNCE_PAD):
             guardian_platform = self.guardian.rect
@@ -339,8 +388,8 @@ class Level:
             self.camera.update(self.player.rect)
 
         # Clear surface
-        self.surface.fill((0, 0, 0))
-        self.viewport.fill((0, 0, 0))
+        self.surface.fill(self.PALETTE['purple'])
+        self.viewport.fill(self.PALETTE['purple'])
 
         # Draw HUD - level name on left, hearts on right
         Tileset.render_tile(self.surface, self.level_banner, 0, 0)
@@ -358,9 +407,21 @@ class Level:
                 Tileset.render_tile(self.surface, empty_orb, 24 + i, 0)
     
         # Draw world layers
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND, (128, 128, 128))
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
+        # Legacy layers — drawn first so palette layers render on top during migration
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
+
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_PURPLE, self.PALETTE['purple'])
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_RED,    self.PALETTE['red'])
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_GREEN,  self.PALETTE['green'])
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_CREAM,  self.PALETTE['cream'])
+
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND,  (128, 128, 128))
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
+        
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_PURPLE, self.PALETTE['purple'])
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_RED,    self.PALETTE['red'])
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_GREEN,  self.PALETTE['green'])
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_CREAM,  self.PALETTE['cream'])
 
         # Guardian drawn AFTER viewport.fill() so it's not wiped — fixes the guardian bug too
         self.guardian.update()
@@ -469,9 +530,8 @@ class Level:
                     continue
                 web_tile_x = web.x // Tileset.TILE_SIZE
                 web_tile_y = web.y // Tileset.TILE_SIZE
-                tiles_around = self.tilemap.get_tiles_rect(
-                    pygame.Rect(web_tile_x - 1, web_tile_y - 1, 3, 3),
-                    self.LAYER_PLATFORM
+                tiles_around = self._get_all_platform_tiles(
+                    pygame.Rect(web_tile_x - 1, web_tile_y - 1, 3, 3)
                 )
                 for row in tiles_around:
                     for tile in row:
