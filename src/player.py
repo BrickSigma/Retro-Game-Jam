@@ -50,7 +50,7 @@ class Player:
     SWING_DURATION = 10
     CLIMB_VEL = 0.6
     HANG_VEL = 0.5 # I really don't want to understand how
-    JUMP_HEIGHT = 10  # Let the player jump 15 pixels 
+    JUMP_HEIGHT = 15  # Let the player jump 15 pixels 
     BOUNCE_FORCE = 4.5
     MAX_AIR_TIME = 6
     MAX_WALL_JUMP_TIME = 36
@@ -364,6 +364,7 @@ class Player:
                 self.change_state_to(PlayerState.FALLING)
 
         if self.state == PlayerState.CLIMBING and collisions.bottom:
+            self._ladder_exit_timer = 20
             self.change_state_to(PlayerState.IDLE)
             self.y_momentum = 0
 
@@ -418,7 +419,7 @@ class Player:
             if self.rect.colliderect(gates[0].rect):
                 next_state = PlayerUpdateState.COMPLETED_LEVEL
 
-        HARMFUL = {EntityType.SPIKE, EntityType.GHOST, EntityType.SPIDER}
+        HARMFUL = {EntityType.SPIKE, EntityType.GHOST, EntityType.SPIDER, EntityType.BOSS}
         for entity in entities:
             if entity.type not in HARMFUL:
                 continue

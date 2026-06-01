@@ -33,6 +33,7 @@ class LevelState(Enum):
     NEXT_LEVEL = auto()     # Moves onto the next level
     GAME_OVER = auto()
     QUIT = auto()
+    BOSS_DEFEATED = auto()  # boss killed — triggers credits
 
 @unique
 class MapTiles(Enum):
@@ -45,6 +46,7 @@ class Level:
     LAYER_PLATFORM   = "platform"   # solid tiles the player walks on
     LAYER_ITEMS      = "items"      # collectibles and interactables (optional)
     LAYER_BACKGROUND = "background" # non-collidable backdrop tiles (optional)
+    LAYER_BACKGROUND2 = "background2"
 
     def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
         self.surface = surface
@@ -82,6 +84,11 @@ class Level:
         self.MAX_CHARGES = 3
         self.charges = self.MAX_CHARGES
 
+        self.boss_defeated   = False
+        self.arena_locked    = False
+        self._credits_timer  = 0
+        self._checkpoint_data: dict | None = None
+
         # HUD banners — built once, not every frame
         self.level_banner = Tileset.render_string(f"Level: {level_no}")
         self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
@@ -93,12 +100,17 @@ class Level:
 
     def restart(self):
         """
-        Restart the level. 
+        Restart the level.
         This basically sets up the initial state of the level, so things like
         the player position, camera position and state, and any entities are loaded.
         """
         self.lives = self.MAX_LIVES
         self.charges = self.MAX_CHARGES
+        self.boss_defeated   = False
+        self.arena_locked    = False
+        self._credits_timer  = 0
+        self._checkpoint_data = None  # full restart clears checkpoint
+        self.camera.unlock()
         self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
 
         # Reset all guardian upgrades on full restart
@@ -118,14 +130,27 @@ class Level:
     def respawn(self):
         """
         Soft reset — called when the player dies but still has lives remaining.
-        Only resets the player position and entities, lives stay the same.
+        If a checkpoint was hit, player respawns there with guardian state restored.
         """
-        # Rebuild the lives banner to reflect the new count
-        self.charges = self.MAX_CHARGES
+        self.charges        = self.MAX_CHARGES
+        self.boss_defeated  = False
+        self.arena_locked   = False
+        self._credits_timer = 0
+        self.camera.unlock()
         self.entities = self.tilemap.get_entities()
         self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
 
-        self._respawn_player()
+        if self._checkpoint_data:
+            self._respawn_at_checkpoint()
+            # Re-activate the checkpoint entity so it stays gold after respawn
+            for entity in self.entities:
+                if (isinstance(entity, Checkpoint)
+                        and entity.x == self._checkpoint_data['x']
+                        and entity.y == self._checkpoint_data['y']):
+                    entity.activated = True
+                    break
+        else:
+            self._respawn_player()
 
     def _respawn_player(self):
         """
@@ -150,6 +175,43 @@ class Level:
         self.guardian.flash_timer    = 0
         self.guardian.state          = GuardianState.FOLLOWING
 
+    def _save_checkpoint(self, entity: 'Checkpoint'):
+        """Snapshot the current player/guardian state when a checkpoint is touched."""
+        self._checkpoint_data = {
+            'x': entity.x,
+            'y': entity.y,
+            'wielding_sword': self.player.wielding_sword,
+            'guardian': {
+                'upgraded_l2':    self.guardian.upgraded_l2,
+                'upgraded_l3':    self.guardian.upgraded_l3,
+                'can_shield':     self.guardian.can_shield,
+                'can_bounce_pad': self.guardian.can_bounce_pad,
+                'can_use_sword':  self.guardian.can_use_sword,
+                'can_use_decoy':  self.guardian.can_use_decoy,
+            }
+        }
+
+    def _respawn_at_checkpoint(self):
+        """Restore player and guardian to the saved checkpoint state."""
+        cp = self._checkpoint_data
+        self.player.pos    = [float(cp['x']), float(cp['y'])]
+        self.player.rect.x = cp['x']
+        self.player.rect.y = cp['y']
+        self.player.state  = PlayerState.IDLE
+        self.player.y_momentum = 0
+        self.player._invulnerability_timer = 0
+        self.player.wielding_sword = cp['wielding_sword']
+
+        g = cp['guardian']
+        self.guardian.upgraded_l2    = g['upgraded_l2']
+        self.guardian.upgraded_l3    = g['upgraded_l3']
+        self.guardian.can_shield     = g['can_shield']
+        self.guardian.can_bounce_pad = g['can_bounce_pad']
+        self.guardian.can_use_sword  = g['can_use_sword']
+        self.guardian.can_use_decoy  = g['can_use_decoy']
+        self.guardian.shield_active  = False
+        self.guardian.flash_timer    = 0
+        self.guardian.state          = GuardianState.FOLLOWING
 
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
@@ -243,6 +305,17 @@ class Level:
             guardian_platform
         )
 
+        # Clamp player to the locked camera viewport — both edges are arena walls
+        if self.camera.locked:
+            left  = int(self.camera.pos[0])
+            right = int(self.camera.pos[0]) + Camera.WIDTH - self.player.rect.width
+            if self.player.pos[0] < left:
+                self.player.pos[0] = float(left)
+                self.player.rect.x = left
+            elif self.player.pos[0] > right:
+                self.player.pos[0] = float(right)
+                self.player.rect.x = right
+
         match player_state:
             case PlayerUpdateState.NO_CHANGE:
                 pass
@@ -255,7 +328,15 @@ class Level:
             case PlayerUpdateState.COMPLETED_LEVEL:
                 next_state = LevelState.NEXT_LEVEL
 
-        self.camera.update(self.player.rect)
+        # Camera: pan to boss during spawn, lock once the fight starts
+        if self.arena_locked:
+            boss_entity = next((e for e in self.entities if isinstance(e, Boss)), None)
+            if boss_entity and boss_entity.state == BossState.SPAWNING:
+                self.camera.update(boss_entity.rect)  # lerp toward boss
+            elif not self.camera.locked:
+                self.camera.lock()                     # fight started — freeze here
+        else:
+            self.camera.update(self.player.rect)
 
         # Clear surface
         self.surface.fill((0, 0, 0))
@@ -278,6 +359,7 @@ class Level:
     
         # Draw world layers
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND, (128, 128, 128))
+        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
         self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
 
         # Guardian drawn AFTER viewport.fill() so it's not wiped — fixes the guardian bug too
@@ -295,13 +377,50 @@ class Level:
         decoy_active = self.guardian.state == GuardianState.DECOY
         new_entities = []
         for entity in self.entities:
-            if entity.type in (EntityType.GHOST, EntityType.SPIDER):
-                entity.distracted = decoy_active
-            if not player_is_dead:
-                result = entity.update(enemy_target)
-                if result is not None:
-                    new_entities.append(result)
-            entity.draw(self.viewport, self.camera)
+            if isinstance(entity, Boss):
+                if not player_is_dead:
+                    result = entity.update(self.player.rect)
+                    # Seal the arena the moment the boss wakes up
+                    if not self.arena_locked and entity.state == BossState.SPAWNING:
+                        self.arena_locked = True
+                    if result:
+                        new_entities.extend(result['projectiles'])
+                        if result['ghosts'] > 0:
+                            boss_cx = int(entity.pos[0]) + Tileset.TILE_SIZE * 2
+                            boss_y  = int(entity.pos[1])
+                            offset  = Tileset.TILE_SIZE * 5
+                            ghost_l = Ghost(boss_cx - offset, boss_y)
+                            ghost_r = Ghost(boss_cx + offset, boss_y)
+                            ghost_l.direction = -1
+                            new_entities.extend([ghost_l, ghost_r])
+                        if result['defeated']:
+                            self.boss_defeated  = True
+                            self._credits_timer = FPS * 3  # 3-second pause before credits
+                        # Copy-player collision — touching a copy teleports the boss there
+                        for copy in entity.copies:
+                            _offset = Tileset.TILE_SIZE
+                            copy_rect = pygame.Rect(
+                                int(copy.pos[0]) + _offset, int(copy.pos[1]) + _offset,
+                                Tileset.TILE_SIZE * 2, Tileset.TILE_SIZE * 2
+                            )
+                            if copy_rect.colliderect(self.player.rect):
+                                entity.snap_to_copy(copy)
+                                break
+                entity.draw(self.viewport, self.camera)
+            elif isinstance(entity, Checkpoint):
+                entity.draw(self.viewport, self.camera)
+                if not entity.activated and not player_is_dead:
+                    if entity.rect.colliderect(self.player.rect):
+                        entity.activated = True
+                        self._save_checkpoint(entity)
+            else:
+                if entity.type in (EntityType.GHOST, EntityType.SPIDER):
+                    entity.distracted = decoy_active
+                if not player_is_dead:
+                    result = entity.update(enemy_target)
+                    if result is not None:
+                        new_entities.append(result)
+                entity.draw(self.viewport, self.camera)
         self.entities.extend(new_entities)
 
         if not player_is_dead:
@@ -335,6 +454,14 @@ class Level:
                         web_zone.collected = True
                         projectile.collected = True
                         break
+                # Hit boss
+                if not projectile.collected:
+                    for entity in self.entities:
+                        if isinstance(entity, Boss) and not entity.collected:
+                            if projectile.rect.colliderect(entity.rect):
+                                entity.hit()
+                                projectile.collected = True
+                                break
 
             # Destroy spider web projectile if it hits a solid tile
             for web in webs:
@@ -374,6 +501,41 @@ class Level:
                             entity.death_timer = FPS
                         elif entity.type == EntityType.SPIDER:
                             entity.hit()
+                # Sword reflects boss projectiles (unreflected only)
+                for entity in self.entities:
+                    if (entity.type == EntityType.BOSS_PROJECTILE
+                            and not entity.collected
+                            and not entity.reflected
+                            and self.player.sword_rect.colliderect(entity.rect)):
+                        entity.reflect()
+                # Sword hits boss
+                for entity in self.entities:
+                    if isinstance(entity, Boss) and not entity.collected:
+                        if self.player.sword_rect.colliderect(entity.rect):
+                            entity.hit()
+
+            # Boss projectile collision and off-screen cleanup
+            boss_projectiles = [e for e in self.entities if e.type == EntityType.BOSS_PROJECTILE]
+            for proj in boss_projectiles:
+                if (proj.x < 0 or proj.x > self.tilemap.width * Tileset.TILE_SIZE or
+                        proj.y < 0 or proj.y > self.tilemap.height * Tileset.TILE_SIZE):
+                    proj.collected = True
+                    continue
+                if proj.reflected:
+                    # Reflected projectiles damage the boss, not the player
+                    for entity in self.entities:
+                        if isinstance(entity, Boss) and not entity.collected:
+                            if proj.rect.colliderect(entity.rect):
+                                entity.hit()
+                                proj.collected = True
+                                break
+                elif proj.rect.colliderect(self.player.rect):
+                    proj.collected = True
+                    if self.player.follow and self.player.follow.shield_active:
+                        self.player.follow.break_shield()
+                        self.player._invulnerability_timer = self.player.INVULNERABILITY_DURATION
+                    elif self.player._invulnerability_timer <= 0:
+                        self.player.change_state_to(PlayerState.DEAD)
 
             # Handle upgrade jewel collection
             for entity in self.entities:
@@ -397,6 +559,10 @@ class Level:
 
         self.surface.blit(self.viewport, (0, 8*3))
 
-
+        # Count down to credits after boss death
+        if self.boss_defeated and self._credits_timer > 0:
+            self._credits_timer -= 1
+            if self._credits_timer == 0:
+                next_state = LevelState.BOSS_DEFEATED
 
         return next_state

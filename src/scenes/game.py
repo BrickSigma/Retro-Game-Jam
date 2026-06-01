@@ -40,6 +40,8 @@ class Game(Scene):
                     self.next_level()
             case LevelState.GAME_OVER:
                 next_state = SceneState.GAME_OVER
+            case LevelState.BOSS_DEFEATED:
+                next_state = SceneState.CREDITS
             case LevelState.NO_CHANGE:
                 pass
 
