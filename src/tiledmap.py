@@ -182,6 +182,10 @@ class TiledMap:
                     entities.append(UpgradeJewel(entity.x, entity.y, level))
                 case EntityType.SPIDER:
                     entities.append(Spider(entity.x, entity.y))
+                case EntityType.BOSS:
+                    entities.append(Boss(entity.x, entity.y))
+                case EntityType.CHECKPOINT:
+                    entities.append(Checkpoint(entity.x, entity.y))
                 case _:
                     entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.type)))
 

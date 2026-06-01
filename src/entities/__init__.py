@@ -5,3 +5,5 @@ from .jewel import Jewel
 from .projectile import Projectile
 from .upgrade_jewel import UpgradeJewel
 from .spider import Spider, SpiderWeb, WebZone
+from .boss import Boss, BossCopy, BossProjectile, BossPhase, BossState
+from .checkpoint import Checkpoint
