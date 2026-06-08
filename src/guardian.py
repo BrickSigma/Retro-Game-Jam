@@ -81,6 +81,10 @@ class Guardian:
         self._decoy_ground_y     = 0.0
         self._decoy_spawn_x      = 0.0
         self._decoy_facing_right = True
+
+        # SFX
+        self.FIRE_SFX = pygame.mixer.Sound("assets/sfx/fire.mp3")
+        self.FIRE_SFX.set_volume(0.4)
     
     def _get_platform_pos(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> tuple[int, int]:
         """
@@ -327,5 +331,8 @@ class Guardian:
         # Spawn at guardian center
         x = self.rect.centerx - TILE_SIZE // 2
         y = self.rect.centery - TILE_SIZE // 2
+
+        # Play SFX as well
+        self.FIRE_SFX.play()
         return Projectile(x, y, facing_right)
     

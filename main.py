@@ -8,6 +8,7 @@ from src.scenes import *
 async def main():
     # pygame setup
     pygame.init()
+    pygame.mixer.pre_init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
     clock = pygame.time.Clock() # Clock used to handle frame rate
 
