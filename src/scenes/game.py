@@ -15,9 +15,10 @@ class Game(Scene):
         self.levels = [
             Level(self.surface, 1),
             Level(self.surface, 2, CameraState.VERTICAL),
+            Level(self.surface, 3)
         ]
 
-        self.current_level = 1
+        self.current_level = 0
         self.level = self.levels[self.current_level]
 
     def next_level(self):
@@ -37,6 +38,10 @@ class Game(Scene):
                     next_state = SceneState.CREDITS
                 else:
                     self.next_level()
+            case LevelState.GAME_OVER:
+                next_state = SceneState.GAME_OVER
+            case LevelState.BOSS_DEFEATED:
+                next_state = SceneState.CREDITS
             case LevelState.NO_CHANGE:
                 pass
 

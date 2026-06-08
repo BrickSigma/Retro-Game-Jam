@@ -6,7 +6,7 @@ from enum import Enum, auto
 import src.tileset as Tileset
 from src.camera import Camera
 from src.tile import Tile, TileType
-from src.entities.entity import *
+from src.entities import *
 
 type Tiles = list[list[Tile]]
 
@@ -146,11 +146,14 @@ class TiledMap:
 
     def get_tiles_rect(self, rect: pygame.Rect, layer: str) -> Tiles:
         """
-        Return a region of the tile map. 
+        Return a region of the tile map.
         This is useful for tile collision detection.
 
         `rect`: should be a tuple with (x, y, w, h) values
+        Returns None if the layer doesn't exist.
         """
+        if layer not in self.layers:
+            return None
 
         tiles: list[list[Tile]] = []
         for y in range(0, rect.h):
@@ -173,6 +176,19 @@ class TiledMap:
             match type:
                 case EntityType.SPIKE:
                     entities.append(Spike(entity.x, entity.y, type, entity.rotation))
+                case EntityType.GHOST:
+                    entities.append(Ghost(entity.x, entity.y))
+                case EntityType.JEWEL:
+                    entities.append(Jewel(entity.x, entity.y))
+                case EntityType.UPGRADE_JEWEL:
+                    level = int(entity.properties.get('level', 2))
+                    entities.append(UpgradeJewel(entity.x, entity.y, level))
+                case EntityType.SPIDER:
+                    entities.append(Spider(entity.x, entity.y))
+                case EntityType.BOSS:
+                    entities.append(Boss(entity.x, entity.y))
+                case EntityType.CHECKPOINT:
+                    entities.append(Checkpoint(entity.x, entity.y))
                 case _:
                     entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.type)))
 
