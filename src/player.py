@@ -1,6 +1,7 @@
 from enum import Enum, auto, unique
 import pygame
 from math import sqrt, sin, pi
+import random
 
 from src.camera import Camera
 from src.tileset import TILE_SIZE, TileType, get_tile, change_letter_color
@@ -57,6 +58,8 @@ class Player:
     WALL_JUMP_HEIGHT = 14
     DEATH_DELAY = FPS*3
     INVULNERABILITY_DURATION = FPS * 2
+
+    WALKING_SFX_DELAY = 16
 
     class CollisionTypes:
         def __init__(self):
@@ -132,6 +135,26 @@ class Player:
                 TileType.PLAYER_ROPE_1.value,
             ], speed=1),
         }
+
+        self.walking_sound_timer = self.WALKING_SFX_DELAY  # Only play the walking sound after a delay
+
+        # Player SFX objects
+        self.WALKING_SFX = [
+            pygame.mixer.Sound("assets/sfx/footstep1.wav"),
+            pygame.mixer.Sound("assets/sfx/footstep2.wav")]
+        
+        for sfx in self.WALKING_SFX:
+            sfx.set_volume(0.4)
+        
+        self.JUMP_SFX = pygame.mixer.Sound("assets/sfx/jump.wav")
+        self.JUMP_SFX.set_volume(0.4)
+
+        self.LANDING_SFX = pygame.mixer.Sound("assets/sfx/landing.wav")
+        self.LANDING_SFX.set_volume(0.2)
+
+        self.DEATH_SFX = pygame.mixer.Sound("assets/sfx/player death.wav")
+        self.DEATH_SFX.set_volume(0.4)
+        
     
     def _handle_events(self, events: list[pygame.Event]):
         keys = pygame.key.get_pressed()
@@ -239,8 +262,6 @@ class Player:
         return collision_types
     
     
-    
-    
     def get_current_frame(self) -> pygame.Surface:
         """
         Get the current animation frame and flip it if the player is facing left
@@ -252,6 +273,10 @@ class Player:
 
     def update(self, events: list[pygame.Event], tiles: Tiles, entities: list[Entity], guardian_platform=None) -> PlayerUpdateState:
         next_state = PlayerUpdateState.NO_CHANGE
+
+        # Update the walking sound timer
+        if self.walking_sound_timer > 0:
+            self.walking_sound_timer -= 1
 
         # If the player is dead, delay reseting the level using the timer
         if self.state == PlayerState.DEAD:
@@ -333,6 +358,10 @@ class Player:
                 self.air_time = 0
                 if self.moving_left or self.moving_right:
                     self.change_state_to(PlayerState.MOVING)
+                    # Play the walking SFX as well
+                    if self.walking_sound_timer == 0:
+                        self.walking_sound_timer = self.WALKING_SFX_DELAY
+                        random.choice(self.WALKING_SFX).play()
                 else:
                     self.change_state_to(PlayerState.IDLE)
             else:
@@ -440,9 +469,13 @@ class Player:
                     pass  # still invulnerable
                 else:
                     self.change_state_to(PlayerState.DEAD)
+                    self.DEATH_SFX.play()
                 break
+
+        # Check if the player fell out of the world
         if self.rect.y + self.rect.h > self.stage_size[1]*TILE_SIZE:
             next_state = PlayerUpdateState.DIED
+            self.DEATH_SFX.play()
 
         return next_state
 
@@ -518,6 +551,7 @@ class Player:
         self.change_state_to(PlayerState.JUMPING)
         self.y_momentum = -self.JUMP_VEL
         self.animations[self.state].reset()
+        self.JUMP_SFX.play()
 
     def enter_wall_jump_state(self):
         self.change_state_to(PlayerState.WALL_JUMP)
@@ -544,3 +578,7 @@ class Player:
         match old_state:
             case PlayerState.SLIDING:
                 self.wall_jump_time = 0
+
+        # Handle sound effects here between states
+        if old_state is PlayerState.FALLING and new_state in (PlayerState.MOVING, PlayerState.IDLE):
+            self.LANDING_SFX.play()
