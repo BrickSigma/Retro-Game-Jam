@@ -4,6 +4,8 @@ Module to handle the tileset and grab individual tiles
 from enum import Enum, unique
 import pygame
 
+from src.constants import resource_path
+
 TILE_SIZE = 8
 
 tileset: None | pygame.Surface = None
@@ -79,13 +81,14 @@ class TileType(Enum):
     WINDOW_TOP = 97
     PLAYER_SLIDING = 98
     PLAYER_DEAD = 99
+    GUARDIAN_IDLE = 100
 
 def init():
     global tileset
     if tileset != None:
         return
     
-    tileset = pygame.image.load("./assets/tileset.png")
+    tileset = pygame.image.load(resource_path("assets/tileset.png"))
     tileset = tileset.convert_alpha()
 
 def get_tile(index: int) -> pygame.Surface:

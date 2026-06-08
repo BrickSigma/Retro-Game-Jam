@@ -25,9 +25,19 @@ class Camera:
         self.pos: list[float] = list(pos)
         self.state = state
         self.stage_size = stage_size
+        self.locked = False
+
+    def lock(self):
+        """Freeze the camera at its current position."""
+        self.locked = True
+
+    def unlock(self):
+        self.locked = False
 
     def update(self, target: pygame.Rect):
         """Update the camera to follow a target"""
+        if self.locked:
+            return
         # For now, we'll just follow 5the target as is without any special states
         self.pos[0] += (target.x - self.pos[0] - (16*8))/20
         self.pos[1] += (target.y - self.pos[1] - (13*8))/20

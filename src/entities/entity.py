@@ -8,6 +8,16 @@ class EntityType(Enum):
     PLAYER = auto()
     SPIKE = auto()
     GATE = auto()
+    GHOST = auto()
+    JEWEL = auto()
+    PROJECTILE = auto()
+    UPGRADE_JEWEL = auto()
+    SPIDER = auto()
+    SPIDER_WEB = auto()
+    WEB_ZONE = auto()
+    BOSS = auto()
+    BOSS_PROJECTILE = auto()
+    CHECKPOINT = auto()
     UNKNOWN = auto()
 
     @staticmethod
@@ -19,6 +29,18 @@ class EntityType(Enum):
                 return EntityType.SPIKE
             case "gate":
                 return EntityType.GATE
+            case "ghost":
+                return EntityType.GHOST
+            case "jewel":
+                return EntityType.JEWEL
+            case "upgrade_jewel":
+                return EntityType.UPGRADE_JEWEL
+            case "spider":
+                return EntityType.SPIDER
+            case "boss":
+                return EntityType.BOSS
+            case "checkpoint":
+                return EntityType.CHECKPOINT
             case _:
                 return EntityType.UNKNOWN
             
@@ -30,6 +52,26 @@ class EntityType(Enum):
                 return TileType.SPIKE
             case EntityType.GATE:
                 return TileType.DOOR
+            case EntityType.GHOST:
+                return TileType.GHOST
+            case EntityType.JEWEL:
+                return TileType.JEWEL
+            case EntityType.PROJECTILE:
+                return TileType.MAGIC
+            case EntityType.UPGRADE_JEWEL:
+                return TileType.JEWEL
+            case EntityType.SPIDER:
+                return TileType.SPIDER
+            case EntityType.SPIDER_WEB:
+                return TileType.SPIDER_LINE
+            case EntityType.WEB_ZONE:
+                return TileType.SPIDER_WEB
+            case EntityType.BOSS:
+                return TileType.GUARDIAN_IDLE
+            case EntityType.BOSS_PROJECTILE:
+                return TileType.MAGIC
+            case EntityType.CHECKPOINT:
+                return TileType.JEWEL
             case _:
                 return TileType.BOX
 
@@ -47,26 +89,5 @@ class Entity:
         camera_pos = camera.get_pos()
         frame = Tileset.get_tile(self.type.get_tile_type().value)
         surface.blit(frame, (self.rect.x - camera_pos[0], self.rect.y - camera_pos[1]))
-
-class Spike(Entity):
-    def __init__(self, x, y, type, rotation: int):
-        super().__init__(x, y, type)
-        self.rotation = rotation
-        self._pos = [x, y]
-
-    @property
-    def rect(self):
-        if self.rotation == 0:
-            return pygame.Rect(self.x, self.y + 4, TILE_SIZE, 3)
-        elif self.rotation == -90:
-            return pygame.Rect(self.x + 4, self.y, 3, TILE_SIZE)
-        elif self.rotation == 90:
-            return pygame.Rect(self.x, self.y, 3, TILE_SIZE)
-        else:
-            return pygame.Rect(self.x, self.y + 4, TILE_SIZE, 3)        
-
-    def draw(self, surface, camera):
-        camera_pos = camera.get_pos()
-        frame = Tileset.get_tile(self.type.get_tile_type().value)
-        frame = pygame.transform.rotate(frame, -self.rotation)
-        surface.blit(frame, (self._pos[0] - camera_pos[0], self._pos[1] - camera_pos[1]))
+    def update(self, player_rect: pygame.Rect):
+        pass
