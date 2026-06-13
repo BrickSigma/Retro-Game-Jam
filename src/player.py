@@ -11,6 +11,7 @@ from src.entities.entity import Entity, EntityType
 from src.entities.ghost import GhostState
 from src.guardian import GuardianState
 from src.constants import FPS
+import src.gamepad as Gamepad
 
 @unique
 class PlayerUpdateState(Enum):
@@ -157,20 +158,40 @@ class Player:
         
     
     def _handle_events(self, events: list[pygame.Event]):
+        # Check joystick events first
+        joystick = Gamepad.get_joystick()
+        joystick_left = False
+        joystick_right = False
+        joystick_up = False
+        joystick_down = False
+        if joystick is not None:
+            x_axis = joystick.get_axis(Gamepad.LEFT_X_AXIS)
+            if x_axis < -Gamepad.AXIS_THESHOLD:
+                joystick_left = True
+            if x_axis > Gamepad.AXIS_THESHOLD:
+                joystick_right = True
+
+            y_axis = joystick.get_axis(Gamepad.LEFT_Y_AXIS)
+            if y_axis < -Gamepad.AXIS_THESHOLD:
+                joystick_up = True
+            elif y_axis > Gamepad.AXIS_THESHOLD:
+                joystick_down = True
+
+        # Now check keyboard events with joystick events
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a]:
+        if keys[pygame.K_a] or joystick_left:
             self.moving_left = True
             self.facing_right = False
         else:
             self.moving_left = False
-        if keys[pygame.K_d]:
+        if keys[pygame.K_d] or joystick_right:
             self.moving_right = True
             self.facing_right = True
         else:
             self.moving_right = False
-        
-        self.climbing_up = keys[pygame.K_w]
-        self.climbing_down = keys[pygame.K_s]
+
+        self.climbing_up = keys[pygame.K_w] or joystick_up
+        self.climbing_down = keys[pygame.K_s] or joystick_down
 
         for event in events:
             match event.type:
@@ -186,10 +207,27 @@ class Player:
                                     self.enter_wall_jump_state()
                                 elif self.air_time < self.MAX_AIR_TIME:
                                     self.enter_jump_state()
+
                         case pygame.K_m:
+                            # TODO: Handle sword case
                             if self.wielding_sword and not self.sword_swinging:
                                 self.sword_swinging = True
                                 self._swing_timer = self.SWING_DURATION
+
+                case pygame.JOYBUTTONDOWN:
+                    if event.button == 0:
+                        if self.in_web:
+                            pass
+                        elif self.state in (PlayerState.HANGING, PlayerState.HANGING_IDLE):
+                            self.enter_jump_state()
+                        elif (self.state != PlayerState.JUMPING) and (self.state != PlayerState.WALL_JUMP) and (self.state != PlayerState.CLIMBING):
+                            if self.state == PlayerState.SLIDING or self.wall_jump_time < self.MAX_AIR_TIME*3:
+                                self.enter_wall_jump_state()
+                            elif self.air_time < self.MAX_AIR_TIME:
+                                self.enter_jump_state()
+
+                case pygame.JOYHATMOTION:
+                    print(event.value, event.hat)
 
     def move(self, movement: list[float], tiles: Tiles, guardian_platform: pygame.Rect = None) -> CollisionTypes:
         flattened_tiles = [tile for row in tiles for tile in row]
