@@ -209,7 +209,6 @@ class Player:
                                     self.enter_jump_state()
 
                         case pygame.K_m:
-                            # TODO: Handle sword case
                             if self.wielding_sword and not self.sword_swinging:
                                 self.sword_swinging = True
                                 self._swing_timer = self.SWING_DURATION
@@ -225,6 +224,10 @@ class Player:
                                 self.enter_wall_jump_state()
                             elif self.air_time < self.MAX_AIR_TIME:
                                 self.enter_jump_state()
+                    elif event.button == 5:  # Right bumber button
+                        if self.wielding_sword and not self.sword_swinging:
+                            self.sword_swinging = True
+                            self._swing_timer = self.SWING_DURATION
 
     def move(self, movement: list[float], tiles: Tiles, guardian_platform: pygame.Rect = None) -> CollisionTypes:
         flattened_tiles = [tile for row in tiles for tile in row]
