@@ -2,6 +2,7 @@ import pygame
 import asyncio
 
 from src.constants import *
+import src.gamepad as Gamepad
 import src.tileset as Tileset
 from src.scenes import *
 
@@ -15,6 +16,7 @@ async def main():
     canvas = pygame.Surface(SCREEN_SIZE)
 
     Tileset.init()
+    Gamepad.init()
 
     #current_scene = Menu(canvas)
     current_scene = Game(canvas)

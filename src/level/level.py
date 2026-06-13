@@ -17,6 +17,7 @@ from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
 from src.entities import *
 from src.guardian import Guardian, GuardianState
+import src.gamepad as Gamepad
 
 """
 INTERNAL NOTES:
@@ -279,6 +280,7 @@ class Level:
                         case pygame.K_BACKSPACE:
                             self.restart()
                         case pygame.K_l:
+                            # Platform controls
                             if self.charges > 0:
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
@@ -294,6 +296,7 @@ class Level:
                                 if spent:
                                     self.charges -= 1
                         case pygame.K_k:
+                            # Shoot projectile
                             if self.charges > 0:
                                 projectile = self.guardian.fire_projectile(
                                     self.player.rect,
@@ -303,11 +306,13 @@ class Level:
                                     self.entities.append(projectile)
                                     self.charges -= 1
                         case pygame.K_p:
+                            # Activate shield
                             if self.charges > 0 and self.guardian.can_shield:
                                 spent = self.guardian.activate_shield()
                                 if spent:
                                     self.charges -= 1
                         case pygame.K_o:
+                            # Activate bounce pad
                             if self.charges > 0:
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
@@ -323,6 +328,7 @@ class Level:
                                 if spent:
                                     self.charges -= 1
                         case pygame.K_m:
+                            # Activate sword
                             if not self.player.wielding_sword:
                                 if self.charges > 0:
                                     spent = self.guardian.activate_sword()
@@ -332,6 +338,36 @@ class Level:
                         case pygame.K_n:
                             if self.charges > 0:
                                 spent = self.guardian.activate_decoy()
+                                if spent:
+                                    self.charges -= 1
+                
+                case pygame.JOYBUTTONDOWN:
+                    match event.button:
+                        case 2:  # Right bumper button
+                            # Shoot projectile
+                            if self.charges > 0:
+                                projectile = self.guardian.fire_projectile(
+                                    self.player.rect,
+                                    self.player.facing_right
+                                )
+                                if projectile is not None:
+                                    self.entities.append(projectile)
+                                    self.charges -= 1
+                        
+                        case 1:  # B Button
+                            # Platform controls
+                            if self.charges > 0:
+                                player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
+                                player_vel = [
+                                    self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
+                                    self.player.y_momentum
+                                ]
+                                spent = self.guardian.activate_platform(
+                                    self.player.rect,
+                                    self.player.facing_right,
+                                    player_airborne,
+                                    player_vel
+                                )
                                 if spent:
                                     self.charges -= 1
 
