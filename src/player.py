@@ -226,9 +226,6 @@ class Player:
                             elif self.air_time < self.MAX_AIR_TIME:
                                 self.enter_jump_state()
 
-                case pygame.JOYHATMOTION:
-                    print(event.value, event.hat)
-
     def move(self, movement: list[float], tiles: Tiles, guardian_platform: pygame.Rect = None) -> CollisionTypes:
         flattened_tiles = [tile for row in tiles for tile in row]
         normal_tiles = [tile for tile in flattened_tiles
