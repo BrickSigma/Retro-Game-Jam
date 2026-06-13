@@ -271,6 +271,8 @@ class Level:
         # Event handling can take place here
         for event in events:
             match event.type:
+                case pygame.JOYDEVICEADDED:
+                    Gamepad.init()
                 case pygame.QUIT:
                     next_state = LevelState.QUIT
                 case pygame.KEYDOWN:
