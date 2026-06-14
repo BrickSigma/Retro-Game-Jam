@@ -9,6 +9,7 @@ Most of the gameplay takes place here.
 from enum import Enum, unique, auto
 import pygame
 
+from src.entities.torch import Torch
 import src.tileset as Tileset
 from src.tileset import TileType
 from src.constants import resource_path, FPS
@@ -510,10 +511,6 @@ class Level:
         camera_pos = self.camera.get_pos()
         self.viewport.blit(self.platform_surface, (-camera_pos[0], -camera_pos[1]))
 
-        # Guardian drawn AFTER viewport.fill() so it's not wiped — fixes the guardian bug too
-        self.guardian.update()
-        self.guardian.draw(self.viewport, self.camera)
-
         player_is_dead = self.player.state == PlayerState.DEAD
 
         # When decoy is active, enemies chase the guardian instead of the player
@@ -525,7 +522,9 @@ class Level:
         decoy_active = self.guardian.state == GuardianState.DECOY
         new_entities = []
         for entity in self.entities:
-            if isinstance(entity, Boss):
+            if isinstance(entity, Spike):
+                continue
+            elif isinstance(entity, Boss):
                 if not player_is_dead:
                     result = entity.update(self.player.rect)
                     # Seal the arena the moment the boss wakes up
@@ -570,6 +569,10 @@ class Level:
                         new_entities.append(result)
                 entity.draw(self.viewport, self.camera)
         self.entities.extend(new_entities)
+
+        # Guardian drawn AFTER viewport.fill() so it's not wiped - fixes the guardian bug too
+        self.guardian.update()
+        self.guardian.draw(self.viewport, self.camera)
 
         if not player_is_dead:
             # Check projectile collisions
