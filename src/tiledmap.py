@@ -3,6 +3,7 @@ import pygame
 import pytmx
 from enum import Enum, auto
 
+from src.entities.torch import Torch
 import src.tileset as Tileset
 from src.camera import Camera
 from src.tile import Tile, TileType
@@ -255,6 +256,8 @@ class TiledMap:
                     entities.append(Boss(entity.x, entity.y))
                 case EntityType.CHECKPOINT:
                     entities.append(Checkpoint(entity.x, entity.y))
+                case EntityType.TORCH:
+                    entities.append(Torch(entity.x, entity.y))
                 case _:
                     entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.type)))
 

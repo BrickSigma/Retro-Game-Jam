@@ -18,6 +18,7 @@ class EntityType(Enum):
     BOSS = auto()
     BOSS_PROJECTILE = auto()
     CHECKPOINT = auto()
+    TORCH = auto()
     UNKNOWN = auto()
 
     @staticmethod
@@ -41,6 +42,8 @@ class EntityType(Enum):
                 return EntityType.BOSS
             case "checkpoint":
                 return EntityType.CHECKPOINT
+            case "torch":
+                return EntityType.TORCH
             case _:
                 return EntityType.UNKNOWN
             
@@ -72,6 +75,8 @@ class EntityType(Enum):
                 return TileType.MAGIC
             case EntityType.CHECKPOINT:
                 return TileType.JEWEL
+            case EntityType.TORCH:
+                return TileType.TORCH_1
             case _:
                 return TileType.BOX
 
