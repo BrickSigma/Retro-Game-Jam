@@ -22,6 +22,9 @@ class Jewel(Entity):
             speed=20
         )
 
+        self.COLLECTED_SFX = pygame.mixer.Sound("assets/sfx/collectable.wav")
+        self.COLLECTED_SFX.set_volume(0.4)
+
     def update(self, player_rect: pygame.Rect):
         # So the jewels bob here 
         import math
@@ -33,6 +36,7 @@ class Jewel(Entity):
         # Check it player collected the jewel
         if self.rect.colliderect(player_rect):
             self.collected = True
+            self.COLLECTED_SFX.play()
         
         self.animator.update()
 
