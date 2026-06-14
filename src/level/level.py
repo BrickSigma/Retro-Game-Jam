@@ -49,6 +49,7 @@ class Level:
         'cream':  (245, 233, 191),
         'red':    (170, 100, 77),
         'purple': (55, 42, 57),
+        'background': (32, 34, 54)
     }
 
     LAYER_PLATFORM_GREEN  = "platform_green"
@@ -77,6 +78,11 @@ class Level:
         Every item in the game is dependant on the player's position,
         as it determines the camera viewport and scroll.
         """
+
+        # Load the entire platform surface from a PNG
+        self.platform_surface = pygame.image.load(f"{self.level_folder}/platform.png")
+        self.platform_surface.convert_alpha()
+        self.platform_surface.set_colorkey(self.PALETTE['background'])
 
         self.tilemap = TiledMap(f"{self.level_folder}/level.tmx")
         self.entities = self.tilemap.get_entities()
@@ -466,8 +472,8 @@ class Level:
             self.camera.update(self.player.rect)
 
         # Clear surface
-        self.surface.fill(self.PALETTE['purple'])
-        self.viewport.fill(self.PALETTE['purple'])
+        self.surface.fill(self.PALETTE['background'])
+        self.viewport.fill(self.PALETTE['background'])
 
         # Draw HUD - level name on left, hearts on right
         Tileset.render_tile(self.surface, self.level_banner, 0, 0)
@@ -486,20 +492,23 @@ class Level:
     
         # Draw world layers
         # Legacy layers — drawn first so palette layers render on top during migration
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
 
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_PURPLE, self.PALETTE['purple'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_RED,    self.PALETTE['red'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_GREEN,  self.PALETTE['green'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_CREAM,  self.PALETTE['cream'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_PURPLE, self.PALETTE['purple'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_RED,    self.PALETTE['red'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_GREEN,  self.PALETTE['green'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_CREAM,  self.PALETTE['cream'])
 
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND,  (128, 128, 128))
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND,  (128, 128, 128))
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
         
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_PURPLE, self.PALETTE['purple'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_RED,    self.PALETTE['red'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_GREEN,  self.PALETTE['green'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_CREAM,  self.PALETTE['cream'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_PURPLE, self.PALETTE['purple'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_RED,    self.PALETTE['red'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_GREEN,  self.PALETTE['green'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_CREAM,  self.PALETTE['cream'])
+
+        camera_pos = self.camera.get_pos()
+        self.viewport.blit(self.platform_surface, (-camera_pos[0], -camera_pos[1]))
 
         # Guardian drawn AFTER viewport.fill() so it's not wiped — fixes the guardian bug too
         self.guardian.update()

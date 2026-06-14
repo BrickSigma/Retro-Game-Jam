@@ -41,6 +41,52 @@ class TiledMap:
                 self.layers[child.attrib["name"]] = map_data
                 self._prerender_map(child.attrib["name"])
 
+        # IGNORE THE BELOW, USED FOR TEMPORARY WORK
+        PALETTE = {
+            'green':  (120, 131, 116),
+            'cream':  (245, 233, 191),
+            'red':    (170, 100, 77),
+            'purple': (55, 42, 57),
+        }
+
+        LAYER_PLATFORM_GREEN  = "platform_green"
+        LAYER_PLATFORM_CREAM  = "platform_cream"
+        LAYER_PLATFORM_RED    = "platform_red"
+        LAYER_PLATFORM_PURPLE = "platform_purple"
+
+        LAYER_BG_GREEN  = "background_green"
+        LAYER_BG_CREAM  = "background_cream"
+        LAYER_BG_RED    = "background_red"
+        LAYER_BG_PURPLE = "background_purple"
+
+        LAYER_ITEMS = "items"
+
+        # Legacy layer names — kept for levels not yet migrated to palette naming
+        LAYER_PLATFORM   = "platform"
+        LAYER_BACKGROUND = "background"
+        LAYER_BACKGROUND2 = "background2"
+
+        # Save all renders as a PNG
+        # viewport = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
+        # viewport.fill(PALETTE['purple'])
+
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM)
+
+        # self.draw_layer_without_camera(viewport, LAYER_BG_PURPLE, PALETTE['purple'])
+        # self.draw_layer_without_camera(viewport, LAYER_BG_RED,    PALETTE['red'])
+        # self.draw_layer_without_camera(viewport, LAYER_BG_GREEN,  PALETTE['green'])
+        # self.draw_layer_without_camera(viewport, LAYER_BG_CREAM,  PALETTE['cream'])
+
+        # self.draw_layer_without_camera(viewport, LAYER_BACKGROUND,  (128, 128, 128))
+        # self.draw_layer_without_camera(viewport, LAYER_BACKGROUND2, (180, 180, 180))
+        
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_PURPLE, PALETTE['purple'])
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_RED,    PALETTE['red'])
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_GREEN,  PALETTE['green'])
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_CREAM,  PALETTE['cream'])
+
+        # pygame.image.save(viewport, f"{self._file}.png")
+
     def _prerender_map(self, layer):
         """
         Old code for prerendering the map. I've kept in it for archive referencing incase performance drops
@@ -140,6 +186,26 @@ class TiledMap:
             if (-self.tile_size < screen_x < Camera.WIDTH * self.tile_size and
                     -self.tile_size < screen_y < Camera.HEIGHT * self.tile_size):
                 surf_mask.blit(tile_image, (screen_x, screen_y))
+
+        if color_mask is not None:
+            surface.blit(Tileset.swap_color(surf_mask, (255, 255, 255), color_mask), (0, 0))
+
+    def draw_layer_without_camera(self, surface: pygame.Surface, layer: str, color_mask: tuple[int] = None):
+        layer_data = self.get_layer(layer)
+        if layer_data is None:
+            return
+        
+        surf_mask = pygame.Surface(surface.size, pygame.SRCALPHA) if color_mask is not None else surface
+
+        for x, y, gid in layer_data:
+            if gid == 0:
+                continue
+            tile_image = self.tmx.get_tile_image_by_gid(gid)
+            if tile_image is None:
+                continue
+            screen_x = x * self.tile_size
+            screen_y = y * self.tile_size
+            surf_mask.blit(tile_image, (screen_x, screen_y))
 
         if color_mask is not None:
             surface.blit(Tileset.swap_color(surf_mask, (255, 255, 255), color_mask), (0, 0))
