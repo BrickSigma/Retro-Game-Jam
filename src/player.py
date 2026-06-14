@@ -404,7 +404,7 @@ class Player:
                     self.change_state_to(PlayerState.IDLE)
             else:
                 if collisions.left or collisions.right:
-                    if not self.state == PlayerState.MOVING:
+                    if self.state != PlayerState.MOVING and self.state != PlayerState.CLIMBING:
                         self.change_state_to(PlayerState.SLIDING)
                         self.y_momentum = 0.2
                 else:
@@ -601,6 +601,11 @@ class Player:
         old_state = self.state
         self.state = new_state
 
+        # Handle anything to do with the previous state
+        match old_state:
+            case PlayerState.SLIDING:
+                self.wall_jump_time = 0
+
         # Handle anything to do with the new state
         match new_state:
             case PlayerState.CLIMBING:
@@ -611,11 +616,10 @@ class Player:
                 self.wall_jump_right = not self.facing_right
             case PlayerState.DEAD:
                 self.death_timer = 0
-
-        # Handle anything to do with the previous state
-        match old_state:
-            case PlayerState.SLIDING:
-                self.wall_jump_time = 0
+            case PlayerState.CLIMBING:
+                # Only move to the climbing state if the up/down keys are pressed
+                if not (self.climbing_up or self.climbing_down):
+                    new_state = old_state
 
         # Handle sound effects here between states
         if old_state is PlayerState.FALLING and new_state in (PlayerState.MOVING, PlayerState.IDLE):
