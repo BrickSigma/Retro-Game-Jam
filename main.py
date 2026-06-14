@@ -2,18 +2,21 @@ import pygame
 import asyncio
 
 from src.constants import *
+import src.gamepad as Gamepad
 import src.tileset as Tileset
 from src.scenes import *
 
 async def main():
     # pygame setup
     pygame.init()
+    pygame.mixer.pre_init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
     clock = pygame.time.Clock() # Clock used to handle frame rate
 
     canvas = pygame.Surface(SCREEN_SIZE)
 
     Tileset.init()
+    Gamepad.init()
 
     #current_scene = Menu(canvas)
     current_scene = Game(canvas)
