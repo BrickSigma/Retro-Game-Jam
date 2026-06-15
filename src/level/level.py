@@ -9,6 +9,7 @@ Most of the gameplay takes place here.
 from enum import Enum, unique, auto
 import pygame
 
+from src.entities.torch import Torch
 import src.tileset as Tileset
 from src.tileset import TileType
 from src.constants import resource_path, FPS
@@ -17,6 +18,7 @@ from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
 from src.entities import *
 from src.guardian import Guardian, GuardianState
+import src.gamepad as Gamepad
 
 """
 INTERNAL NOTES:
@@ -48,6 +50,7 @@ class Level:
         'cream':  (245, 233, 191),
         'red':    (170, 100, 77),
         'purple': (55, 42, 57),
+        'background': (32, 34, 54)
     }
 
     LAYER_PLATFORM_GREEN  = "platform_green"
@@ -76,6 +79,11 @@ class Level:
         Every item in the game is dependant on the player's position,
         as it determines the camera viewport and scroll.
         """
+
+        # Load the entire platform surface from a PNG
+        self.platform_surface = pygame.image.load(f"{self.level_folder}/platform.png")
+        self.platform_surface.convert_alpha()
+        self.platform_surface.set_colorkey(self.PALETTE['background'])
 
         self.tilemap = TiledMap(f"{self.level_folder}/level.tmx")
         self.entities = self.tilemap.get_entities()
@@ -114,8 +122,7 @@ class Level:
         
         # restart() called last — player and guardian are ready
         self.restart()
-
-
+        
 
     def restart(self):
         """
@@ -240,6 +247,9 @@ class Level:
             }
         }
 
+        # Also stop the music so that the boss music can start.
+        pygame.mixer.music.unload()
+
     def _respawn_at_checkpoint(self):
         """Restore player and guardian to the saved checkpoint state."""
         cp = self._checkpoint_data
@@ -261,15 +271,35 @@ class Level:
         self.guardian.shield_active  = False
         self.guardian.flash_timer    = 0
         self.guardian.state          = GuardianState.FOLLOWING
+        
+    def handle_music(self):
+        """
+        Used to handle the background music for the game.
+        """
+        if pygame.mixer.music.get_busy():
+            return  # Do nothing if it's already playing a track
+        
+        if self._checkpoint_data is not None:
+            pygame.mixer.music.load(f"{self.level_folder}/boss.mp3")
+        else:
+            pygame.mixer.music.load(f"{self.level_folder}/music.wav")
+            
+        pygame.mixer.music.set_volume(0.2)
+        pygame.mixer.music.play(fade_ms=2000)
+        
 
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
+        self.handle_music()
+        
         events = pygame.event.get()
 
         # Event handling can take place here
         for event in events:
             match event.type:
+                case pygame.JOYDEVICEADDED:
+                    Gamepad.init()
                 case pygame.QUIT:
                     next_state = LevelState.QUIT
                 case pygame.KEYDOWN:
@@ -279,6 +309,7 @@ class Level:
                         case pygame.K_BACKSPACE:
                             self.restart()
                         case pygame.K_l:
+                            # Platform controls
                             if self.charges > 0:
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
@@ -294,6 +325,7 @@ class Level:
                                 if spent:
                                     self.charges -= 1
                         case pygame.K_k:
+                            # Shoot projectile
                             if self.charges > 0:
                                 projectile = self.guardian.fire_projectile(
                                     self.player.rect,
@@ -303,11 +335,13 @@ class Level:
                                     self.entities.append(projectile)
                                     self.charges -= 1
                         case pygame.K_p:
+                            # Activate shield
                             if self.charges > 0 and self.guardian.can_shield:
                                 spent = self.guardian.activate_shield()
                                 if spent:
                                     self.charges -= 1
                         case pygame.K_o:
+                            # Activate bounce pad
                             if self.charges > 0:
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
@@ -323,6 +357,7 @@ class Level:
                                 if spent:
                                     self.charges -= 1
                         case pygame.K_m:
+                            # Activate sword
                             if not self.player.wielding_sword:
                                 if self.charges > 0:
                                     spent = self.guardian.activate_sword()
@@ -334,6 +369,76 @@ class Level:
                                 spent = self.guardian.activate_decoy()
                                 if spent:
                                     self.charges -= 1
+                
+                case pygame.JOYBUTTONDOWN:
+                    match event.button:
+                        case 1:  # B Button
+                            # Platform controls
+                            if self.charges > 0:
+                                player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
+                                player_vel = [
+                                    self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
+                                    self.player.y_momentum
+                                ]
+                                spent = self.guardian.activate_platform(
+                                    self.player.rect,
+                                    self.player.facing_right,
+                                    player_airborne,
+                                    player_vel
+                                )
+                                if spent:
+                                    self.charges -= 1
+
+                        case 2:  # Right bumper button
+                            # Shoot projectile
+                            if self.charges > 0:
+                                projectile = self.guardian.fire_projectile(
+                                    self.player.rect,
+                                    self.player.facing_right
+                                )
+                                if projectile is not None:
+                                    self.entities.append(projectile)
+                                    self.charges -= 1
+
+                        case 3:  # Y Button
+                            # Activate bounce pad
+                            if self.charges > 0:
+                                player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
+                                player_vel = [
+                                    self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
+                                    self.player.y_momentum
+                                ]
+                                spent = self.guardian.activate_bounce_pad(
+                                    self.player.rect,
+                                    self.player.facing_right,
+                                    player_airborne,
+                                    player_vel
+                                )
+                                if spent:
+                                    self.charges -= 1
+
+                        case 4:  # Left bumber button
+                            # Activate shield
+                            if self.charges > 0 and self.guardian.can_shield:
+                                spent = self.guardian.activate_shield()
+                                if spent:
+                                    self.charges -= 1
+                        
+                        case 5:  # Right bumber button
+                            # Activate sword
+                            if not self.player.wielding_sword:
+                                if self.charges > 0:
+                                    spent = self.guardian.activate_sword()
+                                    if spent:
+                                        self.charges -= 1
+                                        self.player.wielding_sword = True
+
+                case pygame.JOYHATMOTION:
+                    if event.value[1] == -1:  # D-pad down button
+                        if self.charges > 0:
+                            spent = self.guardian.activate_decoy()
+                            if spent:
+                                self.charges -= 1
 
         tiles_rect = pygame.Rect(
             (self.player.rect.x//Tileset.TILE_SIZE) - 1, 
@@ -371,10 +476,14 @@ class Level:
             case PlayerUpdateState.DIED:
                 self.lives = max(0, self.lives - 1)
                 if self.lives <=0:
+                    # Also stop the music
+                    pygame.mixer.music.unload()
                     next_state = LevelState.GAME_OVER # signal game over to game.py
                 else:
                     self.respawn() # sof reset, keep remaining lives
             case PlayerUpdateState.COMPLETED_LEVEL:
+                # Stop the music as well
+                pygame.mixer.music.unload()
                 next_state = LevelState.NEXT_LEVEL
 
         # Camera: pan to boss during spawn, lock once the fight starts
@@ -388,8 +497,8 @@ class Level:
             self.camera.update(self.player.rect)
 
         # Clear surface
-        self.surface.fill(self.PALETTE['purple'])
-        self.viewport.fill(self.PALETTE['purple'])
+        self.surface.fill(self.PALETTE['background'])
+        self.viewport.fill(self.PALETTE['background'])
 
         # Draw HUD - level name on left, hearts on right
         Tileset.render_tile(self.surface, self.level_banner, 0, 0)
@@ -408,24 +517,23 @@ class Level:
     
         # Draw world layers
         # Legacy layers — drawn first so palette layers render on top during migration
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM)
 
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_PURPLE, self.PALETTE['purple'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_RED,    self.PALETTE['red'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_GREEN,  self.PALETTE['green'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_CREAM,  self.PALETTE['cream'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_PURPLE, self.PALETTE['purple'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_RED,    self.PALETTE['red'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_GREEN,  self.PALETTE['green'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BG_CREAM,  self.PALETTE['cream'])
 
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND,  (128, 128, 128))
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND,  (128, 128, 128))
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_BACKGROUND2, (180, 180, 180))
         
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_PURPLE, self.PALETTE['purple'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_RED,    self.PALETTE['red'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_GREEN,  self.PALETTE['green'])
-        self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_CREAM,  self.PALETTE['cream'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_PURPLE, self.PALETTE['purple'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_RED,    self.PALETTE['red'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_GREEN,  self.PALETTE['green'])
+        # self.tilemap.draw_layer(self.viewport, self.camera, self.LAYER_PLATFORM_CREAM,  self.PALETTE['cream'])
 
-        # Guardian drawn AFTER viewport.fill() so it's not wiped — fixes the guardian bug too
-        self.guardian.update()
-        self.guardian.draw(self.viewport, self.camera)
+        camera_pos = self.camera.get_pos()
+        self.viewport.blit(self.platform_surface, (-camera_pos[0], -camera_pos[1]))
 
         player_is_dead = self.player.state == PlayerState.DEAD
 
@@ -438,7 +546,9 @@ class Level:
         decoy_active = self.guardian.state == GuardianState.DECOY
         new_entities = []
         for entity in self.entities:
-            if isinstance(entity, Boss):
+            if isinstance(entity, Spike):
+                continue
+            elif isinstance(entity, Boss):
                 if not player_is_dead:
                     result = entity.update(self.player.rect)
                     # Seal the arena the moment the boss wakes up
@@ -483,6 +593,10 @@ class Level:
                         new_entities.append(result)
                 entity.draw(self.viewport, self.camera)
         self.entities.extend(new_entities)
+
+        # Guardian drawn AFTER viewport.fill() so it's not wiped - fixes the guardian bug too
+        self.guardian.update()
+        self.guardian.draw(self.viewport, self.camera)
 
         if not player_is_dead:
             # Check projectile collisions

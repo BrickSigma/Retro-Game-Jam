@@ -82,6 +82,12 @@ class TileType(Enum):
     PLAYER_SLIDING = 98
     PLAYER_DEAD = 99
     GUARDIAN_IDLE = 100
+    TORCH_1 = 101
+    TORCH_2 = 102
+    TORCH_3 = 103
+    TORCH_4 = 104
+    TORCH_5 = 105
+    TORCH_6 = 106
 
 def init():
     global tileset
