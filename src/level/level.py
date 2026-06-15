@@ -122,8 +122,7 @@ class Level:
         
         # restart() called last — player and guardian are ready
         self.restart()
-
-
+        
 
     def restart(self):
         """
@@ -269,10 +268,24 @@ class Level:
         self.guardian.shield_active  = False
         self.guardian.flash_timer    = 0
         self.guardian.state          = GuardianState.FOLLOWING
+        
+    def handle_music(self):
+        """
+        Used to handle the background music for the game.
+        """
+        if pygame.mixer.music.get_busy():
+            return  # Do nothing if it's already playing a track
+        
+        pygame.mixer.music.load(f"{self.level_folder}/music.wav")
+        pygame.mixer.music.set_volume(0.2)
+        pygame.mixer.music.play()
+        
 
     def update(self) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
+        self.handle_music()
+        
         events = pygame.event.get()
 
         # Event handling can take place here
@@ -456,10 +469,14 @@ class Level:
             case PlayerUpdateState.DIED:
                 self.lives = max(0, self.lives - 1)
                 if self.lives <=0:
+                    # Also stop the music
+                    pygame.mixer.music.unload()
                     next_state = LevelState.GAME_OVER # signal game over to game.py
                 else:
                     self.respawn() # sof reset, keep remaining lives
             case PlayerUpdateState.COMPLETED_LEVEL:
+                # Stop the music as well
+                pygame.mixer.music.unload()
                 next_state = LevelState.NEXT_LEVEL
 
         # Camera: pan to boss during spawn, lock once the fight starts
