@@ -2,42 +2,50 @@ import pygame
 import asyncio
 
 from src.constants import *
+import src.gamepad as Gamepad
 import src.tileset as Tileset
 from src.scenes import *
 
-"""
-The game is wrapped in the `main` function below which has also been made asynchronous.
-
-The reason for this is to support a web build of the game (that we can upload to itch.io).
-It'll still run perfectly on desktop.
-"""
 async def main():
     # pygame setup
     pygame.init()
+    pygame.mixer.pre_init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
     clock = pygame.time.Clock() # Clock used to handle frame rate
 
     canvas = pygame.Surface(SCREEN_SIZE)
 
     Tileset.init()
+    Gamepad.init()
+    
+    scenes = [
+        Menu(canvas),
+        Controls(canvas),
+        Game(canvas),
+        Credits(canvas),
+        GameOver(canvas)
+    ]
 
-    # current_scene = Menu(canvas)
-    current_scene = Game(canvas)
+    #current_scene = Menu(canvas)
+    current_scene = 2
 
     running = True
     while running:
         # Scene state manager
-        match current_scene.update():
+        match scenes[current_scene].update():
             case SceneState.QUIT:
                 running = False
             case SceneState.MENU:
-                current_scene = Menu(canvas)
+                current_scene = 0
             case SceneState.CONTROLS:
-                current_scene = Controls(canvas)
+                current_scene = 1
             case SceneState.GAME:
-                current_scene = Game(canvas)
+                current_scene = 2
             case SceneState.CREDITS:
-                current_scene = Credits(canvas)
+                current_scene = 3
+            case SceneState.GAME_OVER:
+                current_scene = 4
+                scenes[2].level.respawn()
             case SceneState.NO_CHANGE:
                 pass
             case _:
@@ -45,12 +53,15 @@ async def main():
             
 
         # Update the screen (flip() swaps the backbuffer and framebuffer)
+        Tileset.render_tile(canvas, Tileset.render_string(f"{int(clock.get_fps())}"), 27, 0)
         pygame.transform.scale(canvas, WINDOW_SIZE, screen)
+
         pygame.display.flip()
 
         clock.tick(FPS)  # limits FPS to 60
-        await asyncio.sleep(0)  # Needed for web build
+        await asyncio.sleep(0)
 
     pygame.quit()
 
-asyncio.run(main())
+if __name__=="__main__":
+    asyncio.run(main())

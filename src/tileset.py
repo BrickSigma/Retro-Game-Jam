@@ -4,6 +4,8 @@ Module to handle the tileset and grab individual tiles
 from enum import Enum, unique
 import pygame
 
+from src.constants import resource_path
+
 TILE_SIZE = 8
 
 tileset: None | pygame.Surface = None
@@ -19,35 +21,80 @@ _unused_color = (254, 254, 254)
 class TileType(Enum):
     NONE = None
     ARROW = 39
-    BRICK = 40
-    BROKEN_BRICK = 41
-    SOLID_BRICK = 42
-    CAVE_TOP_LEFT = 43
-    CAVE_TOP_RIGHT = 44
-    CAVE_BOTTOM_LEFT = 45
-    CAVE_BOTTOM_RIGHT = 46
-    CAVE_DETAIL = 47
-    CAVE_FLOOR = 48
-    CAVE_ROOF = 49
-    CAVE_WALL_LEFT = 50
-    CAVE_WALL_RIGHT = 51
-    RAMP_RIGHT = 52
-    RAMP_LEFT = 53
-    CAVE_CORNER_TOP_LEFT = 54
-    CAVE_CORNER_TOP_RIGHT = 55
-    CAVE_CORNER_BOTTOM_LEFT = 56
-    CAVE_CORNER_BOTTOM_RIGHT = 57
-    PILLAR_TOP = 58
-    PILLAR_BOTTOM = 59
-    PILLAR_MIDDLE = 60
-    LADDER = 61
+    BOX = 40
+    BREAKABLE_BRICK = 41
+    BRICK = 42
+    BRICK_SOLID = 43
+    BUTTON = 44
+    CAVE_CORNER_1 = 45
+    CAVE_CORNER_2= 46
+    CAVE_CORNER_3 = 47
+    CAVE_DETAIL = 48
+    CAVE_FLOOR = 49
+    CAVE_WALL = 50
+    CHAIN = 51
+    CHEST = 52
+    COIN = 53
+    COINS_PILE = 54
+    CRYSTALS = 55
+    DIRT = 56
+    DOOR = 57
+    FIRE = 58
+    GHOST = 59
+    GRASS = 60
+    HEART = 61
+    JEWEL = 62
+    KEY = 63
+    KEY_BLOCK = 64
+    LADDER = 65
+    LAVA = 66
+    MAGIC = 67
+    OVERHEAD_ROPE = 68
+    PILLAR_BASE = 69
+    PILLAR_MIDDLE = 70
+    PILLAR_TOP = 71
+    PLATFORM = 72
+    PLAYER_CLIMB_1 = 73
+    PLAYER_CLIMB_2 = 74
+    PLAYER_FALL = 75
+    PLAYER_IDLE = 76
+    PLAYER_ROPE_1 = 77
+    PLAYER_ROPE_2 = 78
+    PLAYER_ROPE_3 = 79
+    PLAYER_RUN_1 = 80
+    PLAYER_RUN_2 = 81
+    PLAYER_RUN_3 = 82
+    PLAYER_RUN_4 = 83
+    ROCKS = 84
+    SHROOM = 85
+    SPIDER = 86
+    SPIDER_LINE = 87
+    SPIDER_WEB = 88
+    SPIKE = 89
+    SPRING = 90
+    STALAGMITE = 91
+    LEVER = 92
+    SWORD = 93
+    TORCH = 94
+    VINE = 95
+    WINDOW = 96
+    WINDOW_TOP = 97
+    PLAYER_SLIDING = 98
+    PLAYER_DEAD = 99
+    GUARDIAN_IDLE = 100
+    TORCH_1 = 101
+    TORCH_2 = 102
+    TORCH_3 = 103
+    TORCH_4 = 104
+    TORCH_5 = 105
+    TORCH_6 = 106
 
 def init():
     global tileset
     if tileset != None:
         return
     
-    tileset = pygame.image.load("./assets/tileset.png")
+    tileset = pygame.image.load(resource_path("assets/tileset.png"))
     tileset = tileset.convert_alpha()
 
 def get_tile(index: int) -> pygame.Surface:

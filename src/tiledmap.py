@@ -1,13 +1,15 @@
-"""
-Temporary file for testing
-"""
 import xml.etree.ElementTree as ET
 import pygame
+import pytmx
+from enum import Enum, auto
 
+from src.entities.torch import Torch
 import src.tileset as Tileset
 from src.camera import Camera
+from src.tile import Tile, TileType
+from src.entities import *
 
-type Tiles = list[list[int]]
+type Tiles = list[list[Tile]]
 
 class TiledMap:
     def __init__(self, file: str):
@@ -17,6 +19,14 @@ class TiledMap:
         self.height = 0
         self.tile_size = 0
 
+        # We're going to prerender the entire map onto a surface.
+        # It'll use a little more memory, but will be faster to work with when rendering
+        self._prerenders: dict[str, pygame.Surface] = {}
+
+        self.tmx = pytmx.load_pygame(file)
+        self.get_entities()
+
+        # I've kept the old parser as the tilemap still uses it, but rendering uses pytmx now
         self._load()
 
     def _load(self):
@@ -30,8 +40,73 @@ class TiledMap:
                 data = child.find("data").text
                 map_data = self._parse_data(data)
                 self.layers[child.attrib["name"]] = map_data
+                self._prerender_map(child.attrib["name"])
+
+        # IGNORE THE BELOW, USED FOR TEMPORARY WORK
+        PALETTE = {
+            'green':  (120, 131, 116),
+            'cream':  (245, 233, 191),
+            'red':    (170, 100, 77),
+            'purple': (55, 42, 57),
+        }
+
+        LAYER_PLATFORM_GREEN  = "platform_green"
+        LAYER_PLATFORM_CREAM  = "platform_cream"
+        LAYER_PLATFORM_RED    = "platform_red"
+        LAYER_PLATFORM_PURPLE = "platform_purple"
+
+        LAYER_BG_GREEN  = "background_green"
+        LAYER_BG_CREAM  = "background_cream"
+        LAYER_BG_RED    = "background_red"
+        LAYER_BG_PURPLE = "background_purple"
+
+        LAYER_ITEMS = "items"
+
+        # Legacy layer names — kept for levels not yet migrated to palette naming
+        LAYER_PLATFORM   = "platform"
+        LAYER_BACKGROUND = "background"
+        LAYER_BACKGROUND2 = "background2"
+
+        # Save all renders as a PNG
+        # viewport = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
+        # viewport.fill(PALETTE['purple'])
+
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM)
+
+        # self.draw_layer_without_camera(viewport, LAYER_BG_PURPLE, PALETTE['purple'])
+        # self.draw_layer_without_camera(viewport, LAYER_BG_RED,    PALETTE['red'])
+        # self.draw_layer_without_camera(viewport, LAYER_BG_GREEN,  PALETTE['green'])
+        # self.draw_layer_without_camera(viewport, LAYER_BG_CREAM,  PALETTE['cream'])
+
+        # self.draw_layer_without_camera(viewport, LAYER_BACKGROUND,  (128, 128, 128))
+        # self.draw_layer_without_camera(viewport, LAYER_BACKGROUND2, (180, 180, 180))
+        
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_PURPLE, PALETTE['purple'])
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_RED,    PALETTE['red'])
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_GREEN,  PALETTE['green'])
+        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_CREAM,  PALETTE['cream'])
+
+        # pygame.image.save(viewport, f"{self._file}.png")
+
+    def _prerender_map(self, layer):
+        """
+        Old code for prerendering the map. I've kept in it for archive referencing incase performance drops
+        """
+        self._prerenders[layer] = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
+        self._prerenders[layer].convert_alpha()
+
+        for h in range(0, self.height):
+            for w in range(0, self.width):
+                tile_id = self.get_tile(w, h, layer).type.value
+                if tile_id == None:
+                    continue
+
+                self._prerenders[layer].blit(Tileset.get_tile(tile_id), (w*self.tile_size, h*self.tile_size))
 
     def _parse_data(self, data:str) -> Tiles:
+        """
+        This function sets up the tile collision maps
+        """
         map = data.split("\n")
         map_data: Tiles = []
         map.pop(0)
@@ -40,67 +115,151 @@ class TiledMap:
             map_data.append([-1]*self.width)
             row = map[y].split(",")
             for x in range(0, self.width):
-                map_data[y][x] = int(row[x])-1  # We need to subtract 1 from the ID
+                value = int(row[x])-1
+                if value == -1:
+                    map_data[y][x] = Tile(x, y, TileType.NONE, False, False)
+                    continue
+                flip_x = bool(value & 0x80000000)
+                flip_y = bool(value & 0x40000000)
+                value &= 0x0000ffff
+                map_data[y][x] = Tile(x, y, TileType(value), flip_x, flip_y)  # We need to subtract 1 from the ID
 
         return map_data
     
-    def get_tiles(self, layer: str) -> Tiles:
+    def get_layer(self, layer: str):
+        """
+        Safely fetch a layer by name.
+        Returns None instead of crashing if the layer doesn't exist.
+        """
+        try:
+            return self.tmx.get_layer_by_name(layer)
+        except ValueError:
+            return None
+    
+    def get_layer_tiles(self, layer: str) -> Tiles:
+        """
+        Safely fetch a layer by name.
+        Returns None instead of crashing if the layer doesn't exist.
+        """
+        try:
+            return self.layers[layer]
+        except:
+            return None
+    
+    def get_tiles(self, layer: str) -> Tiles | None:
         """Get the tile data for a layer"""
-        tiles = self.layers[layer]
-        if tiles == None:
-            raise Exception(f"{layer} does not exist!")
+        tiles = self.get_layer_tiles(layer)
         return tiles
 
-    def coord_in_map(self, x, y) -> bool:
-        """Tests whether a point is in the tile map"""
-        return (x < 0 or x >= self.width or y < 0 or y >= self.height)
-
-    def get_tile(self, x: int, y: int, layer: str) -> int:
+    def get_tile(self, x: int, y: int, layer: str) -> Tile:
         """Get a single tile id from a layer"""
         if (x < 0 or x >= self.width or y < 0 or y >= self.height):
-            return -1
-        return self.get_tiles(layer)[y][x]
+            return None
+        return self.layers[layer][y][x]
     
     def size(self) -> tuple[int, int]:
         """Return the level size"""
         return (self.width, self.height)
     
-    def draw_layer(self, surface: pygame.Surface, camera: Camera, layer: str):
+    def draw_layer(self, surface: pygame.Surface, camera: Camera, layer: str, color_mask: tuple[int] = None):
         camera_pos = camera.get_pos()
-        camera_tile = [0, 0]
-        camera_tile[0] = camera_pos[0]//self.tile_size
-        camera_tile[1] = camera_pos[1]//self.tile_size
+        layer_data = self.get_layer(layer)
+        if layer_data is None:
+            return
         
-        camera_tile_pos = [camera_tile[0]*self.tile_size, camera_tile[1]*self.tile_size]
-        camera_delta = [0, 0]
-        camera_delta[0] = camera_pos[0] - camera_tile_pos[0]
-        camera_delta[1] = camera_pos[1] - camera_tile_pos[1]
-        
-        for y in range(0, Camera.HEIGHT + 1):
-            for x in range(0, Camera.WIDTH +1):
-                tile_x = x + camera_tile[0]
-                tile_y = y + camera_tile[1]
-                tile_id = self.get_tile(tile_x, tile_y, layer)
-                if tile_id == -1:
-                    continue
+        surf_mask = pygame.Surface(surface.size, pygame.SRCALPHA) if color_mask is not None else surface
 
-                surface.blit(Tileset.get_tile(tile_id), (x*self.tile_size - camera_delta[0], y*self.tile_size - camera_delta[1]))
+        camera_pos = camera.get_pos()
+        camera_tile_x = camera_pos[0] // self.tile_size
+        camera_tile_y = camera_pos[1] // self.tile_size
+        camera_delta_x = camera_pos[0] - camera_tile_x * self.tile_size
+        camera_delta_y = camera_pos[1] - camera_tile_y * self.tile_size
+
+        for x, y, gid in layer_data:
+            if gid == 0:
+                continue
+            tile_image = self.tmx.get_tile_image_by_gid(gid)
+            if tile_image is None:
+                continue
+            screen_x = (x - camera_tile_x) * self.tile_size - camera_delta_x
+            screen_y = (y - camera_tile_y) * self.tile_size - camera_delta_y
+            # Only draw tiles visible in the viewport
+            if (-self.tile_size < screen_x < Camera.WIDTH * self.tile_size and
+                    -self.tile_size < screen_y < Camera.HEIGHT * self.tile_size):
+                surf_mask.blit(tile_image, (screen_x, screen_y))
+
+        if color_mask is not None:
+            surface.blit(Tileset.swap_color(surf_mask, (255, 255, 255), color_mask), (0, 0))
+
+    def draw_layer_without_camera(self, surface: pygame.Surface, layer: str, color_mask: tuple[int] = None):
+        layer_data = self.get_layer(layer)
+        if layer_data is None:
+            return
+        
+        surf_mask = pygame.Surface(surface.size, pygame.SRCALPHA) if color_mask is not None else surface
+
+        for x, y, gid in layer_data:
+            if gid == 0:
+                continue
+            tile_image = self.tmx.get_tile_image_by_gid(gid)
+            if tile_image is None:
+                continue
+            screen_x = x * self.tile_size
+            screen_y = y * self.tile_size
+            surf_mask.blit(tile_image, (screen_x, screen_y))
+
+        if color_mask is not None:
+            surface.blit(Tileset.swap_color(surf_mask, (255, 255, 255), color_mask), (0, 0))
 
     def get_tiles_rect(self, rect: pygame.Rect, layer: str) -> Tiles:
         """
-        Return a region of the tile map. 
+        Return a region of the tile map.
         This is useful for tile collision detection.
 
         `rect`: should be a tuple with (x, y, w, h) values
+        Returns None if the layer doesn't exist.
         """
+        if layer not in self.layers:
+            return None
 
-        tiles = []
+        tiles: list[list[Tile]] = []
         for y in range(0, rect.h):
-            tiles.append([-1]*rect.w)
+            tiles.append([])
             for x in range(0, rect.w):
                 tile_x = x + rect.x
                 tile_y = y + rect.y
-                tile_id = self.get_tile(tile_x, tile_y, layer)
-                tiles[y][x] = tile_id
+                tile = self.get_tile(tile_x, tile_y, layer)
+                if tile == None:
+                    tile = Tile(tile_x, tile_y, TileType.NONE, False, False)
+                tiles[y].append(tile)
 
-        return tiles                
+        return tiles           
+
+    def get_entities(self) -> list[Entity]:
+        entities: list[Entity] = []
+
+        for entity in self.tmx.objects:
+            type = EntityType.from_name(entity.type)
+            match type:
+                case EntityType.SPIKE:
+                    entities.append(Spike(entity.x, entity.y, type, entity.rotation))
+                case EntityType.GHOST:
+                    entities.append(Ghost(entity.x, entity.y))
+                case EntityType.JEWEL:
+                    entities.append(Jewel(entity.x, entity.y))
+                case EntityType.UPGRADE_JEWEL:
+                    level = int(entity.properties.get('level', 2))
+                    entities.append(UpgradeJewel(entity.x, entity.y, level))
+                case EntityType.SPIDER:
+                    entities.append(Spider(entity.x, entity.y))
+                case EntityType.BOSS:
+                    entities.append(Boss(entity.x, entity.y))
+                case EntityType.CHECKPOINT:
+                    entities.append(Checkpoint(entity.x, entity.y))
+                case EntityType.TORCH:
+                    entities.append(Torch(entity.x, entity.y))
+                case _:
+                    entities.append(Entity(entity.x, entity.y, EntityType.from_name(entity.type)))
+
+        return entities
+    
