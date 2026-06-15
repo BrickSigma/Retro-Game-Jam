@@ -345,6 +345,7 @@
 </data>
  </layer>
  <objectgroup id="3" name="entities">
+  <object id="2" type="player" gid="77" x="22" y="135.333" width="8" height="8"/>
   <object id="24" type="upgrade_jewel" gid="63" x="7.83363" y="54.3334" width="8" height="8">
    <properties>
     <property name="level" type="int" value="3"/>
@@ -386,8 +387,8 @@
   <object id="65" type="spike" gid="90" x="480.667" y="152" width="8" height="8" rotation="-90"/>
   <object id="69" type="spike" gid="90" x="87.6667" y="64" width="8" height="8"/>
   <object id="70" type="spike" gid="90" x="96.6667" y="64.6667" width="8" height="8"/>
-  <object id="71" type="spike" gid="90" x="143.667" y="136" width="8" height="8"/>
-  <object id="73" type="spike" gid="90" x="151.333" y="136" width="8" height="8"/>
+  <object id="71" type="spike" gid="90" x="144" y="136" width="8" height="8"/>
+  <object id="73" type="spike" gid="90" x="152" y="136" width="8" height="8"/>
   <object id="74" type="spike" gid="90" x="279.333" y="136" width="8" height="8"/>
   <object id="77" type="spike" gid="90" x="312" y="136.333" width="8" height="8"/>
   <object id="78" type="ghost" gid="60" x="127.333" y="127.333" width="8" height="8"/>
@@ -431,6 +432,5 @@
   <object id="119" type="torch" gid="95" x="920" y="24" width="8" height="8"/>
   <object id="120" type="torch" gid="95" x="800" y="56" width="8" height="8"/>
   <object id="121" type="torch" gid="95" x="984" y="56" width="8" height="8"/>
-  <object id="122" type="player" gid="77" x="736" y="112" width="8" height="8"/>
  </objectgroup>
 </map>
