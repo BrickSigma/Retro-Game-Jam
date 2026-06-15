@@ -247,6 +247,9 @@ class Level:
             }
         }
 
+        # Also stop the music so that the boss music can start.
+        pygame.mixer.music.unload()
+
     def _respawn_at_checkpoint(self):
         """Restore player and guardian to the saved checkpoint state."""
         cp = self._checkpoint_data
@@ -276,9 +279,13 @@ class Level:
         if pygame.mixer.music.get_busy():
             return  # Do nothing if it's already playing a track
         
-        pygame.mixer.music.load(f"{self.level_folder}/music.wav")
+        if self._checkpoint_data is not None:
+            pygame.mixer.music.load(f"{self.level_folder}/boss.mp3")
+        else:
+            pygame.mixer.music.load(f"{self.level_folder}/music.wav")
+            
         pygame.mixer.music.set_volume(0.2)
-        pygame.mixer.music.play()
+        pygame.mixer.music.play(fade_ms=2000)
         
 
     def update(self) -> LevelState:
