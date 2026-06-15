@@ -1,4 +1,5 @@
 import pygame
+from src.constants import resource_path
 import src.tileset as Tileset
 from src.tileset import TileType, TILE_SIZE
 from src.camera import Camera
@@ -22,7 +23,7 @@ class Jewel(Entity):
             speed=20
         )
 
-        self.COLLECTED_SFX = pygame.mixer.Sound("assets/sfx/collectable.wav")
+        self.COLLECTED_SFX = pygame.mixer.Sound(resource_path("assets/sfx/collectable.wav"))
         self.COLLECTED_SFX.set_volume(0.4)
 
     def update(self, player_rect: pygame.Rect):

@@ -10,7 +10,7 @@ from src.animator import Animator
 from src.entities.entity import Entity, EntityType
 from src.entities.ghost import GhostState
 from src.guardian import GuardianState
-from src.constants import FPS
+from src.constants import FPS, resource_path
 import src.gamepad as Gamepad
 
 @unique
@@ -141,19 +141,19 @@ class Player:
 
         # Player SFX objects
         self.WALKING_SFX = [
-            pygame.mixer.Sound("assets/sfx/footstep1.wav"),
-            pygame.mixer.Sound("assets/sfx/footstep2.wav")]
+            pygame.mixer.Sound(resource_path("assets/sfx/footstep1.wav")),
+            pygame.mixer.Sound(resource_path("assets/sfx/footstep2.wav"))]
         
         for sfx in self.WALKING_SFX:
             sfx.set_volume(0.4)
         
-        self.JUMP_SFX = pygame.mixer.Sound("assets/sfx/jump.wav")
+        self.JUMP_SFX = pygame.mixer.Sound(resource_path("assets/sfx/jump.wav"))
         self.JUMP_SFX.set_volume(0.4)
 
-        self.LANDING_SFX = pygame.mixer.Sound("assets/sfx/landing.wav")
+        self.LANDING_SFX = pygame.mixer.Sound(resource_path("assets/sfx/landing.wav"))
         self.LANDING_SFX.set_volume(0.2)
 
-        self.DEATH_SFX = pygame.mixer.Sound("assets/sfx/player death.wav")
+        self.DEATH_SFX = pygame.mixer.Sound(resource_path("assets/sfx/player death.wav"))
         self.DEATH_SFX.set_volume(0.4)
         
     
