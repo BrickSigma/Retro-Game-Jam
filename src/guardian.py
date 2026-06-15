@@ -4,7 +4,7 @@ import src.tileset as Tileset
 from src.camera import Camera
 from src.tileset import TILE_SIZE, TileType
 from src.animator import Animator
-from src.constants import FPS
+from src.constants import FPS, resource_path
 from src.entities.projectile import Projectile
 from enum import Enum, auto, unique
 
@@ -83,7 +83,7 @@ class Guardian:
         self._decoy_facing_right = True
 
         # SFX
-        self.FIRE_SFX = pygame.mixer.Sound("assets/sfx/fire.mp3")
+        self.FIRE_SFX = pygame.mixer.Sound(resource_path("assets/sfx/fire.mp3"))
         self.FIRE_SFX.set_volume(0.4)
     
     def _get_platform_pos(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> tuple[int, int]:
