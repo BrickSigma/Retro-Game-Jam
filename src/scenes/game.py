@@ -18,7 +18,7 @@ class Game(Scene):
             Level(self.surface, 3, background_layer=True)
         ]
 
-        self.current_level = 2
+        self.current_level = 0
         self.level = self.levels[self.current_level]
 
     def next_level(self):
