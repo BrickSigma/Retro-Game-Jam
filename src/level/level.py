@@ -34,7 +34,6 @@ class LevelState(Enum):
     NO_CHANGE = auto()
     NEXT_LEVEL = auto()     # Moves onto the next level
     GAME_OVER = auto()
-    QUIT = auto()
     BOSS_DEFEATED = auto()  # boss killed — triggers credits
 
 @unique
@@ -300,24 +299,16 @@ class Level:
         pygame.mixer.music.play(fade_ms=2000)
         
 
-    def update(self) -> LevelState:
+    def update(self, events: list[pygame.Event]) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
         self.handle_music()
-        
-        events = pygame.event.get()
 
         # Event handling can take place here
         for event in events:
             match event.type:
-                case pygame.JOYDEVICEADDED:
-                    Gamepad.init()
-                case pygame.QUIT:
-                    next_state = LevelState.QUIT
                 case pygame.KEYDOWN:
                     match event.key:
-                        case pygame.K_ESCAPE:
-                            next_state = LevelState.QUIT
                         case pygame.K_BACKSPACE:
                             self.restart()
                         case pygame.K_l:

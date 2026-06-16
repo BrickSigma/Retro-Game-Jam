@@ -26,13 +26,11 @@ class Game(Scene):
         self.current_level += 1
         self.level = self.levels[self.current_level]
 
-    def update(self):
+    def update(self, events):
         """Main game loop sits here"""
         next_state = SceneState.NO_CHANGE
 
-        match self.level.update():
-            case LevelState.QUIT:
-                next_state = SceneState.QUIT
+        match self.level.update(events):
             case LevelState.NEXT_LEVEL:
                 if (self.current_level + 1) >= len(self.levels):
                     next_state = SceneState.CREDITS

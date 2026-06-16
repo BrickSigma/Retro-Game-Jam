@@ -19,7 +19,7 @@ class Menu(Scene):
         self.counter = 0
         self.color = 0
 
-    def update(self) -> SceneState:
+    def update(self, events) -> SceneState:
         next_state = SceneState.NO_CHANGE
 
         # Handle joystick input
@@ -31,15 +31,10 @@ class Menu(Scene):
             elif y_axis > Gamepad.AXIS_THESHOLD:
                 self.selected = 1
 
-        for event in pygame.event.get():
+        for event in events:
             match event.type:
-                case pygame.QUIT:
-                    next_state = SceneState.QUIT
-
                 case pygame.KEYDOWN:
                     match event.key:
-                        case pygame.K_ESCAPE:
-                            next_state = SceneState.QUIT
                         case pygame.K_DOWN | pygame.K_s:
                             self.selected = 1
                         case pygame.K_UP | pygame.K_w:

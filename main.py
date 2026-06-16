@@ -10,7 +10,7 @@ async def main():
     # pygame setup
     pygame.init()
     pygame.mixer.pre_init()
-    screen = pygame.display.set_mode(WINDOW_SIZE)
+    screen = pygame.display.set_mode(WINDOW_SIZE, flags=pygame.RESIZABLE)
     clock = pygame.time.Clock() # Clock used to handle frame rate
 
     canvas = pygame.Surface(SCREEN_SIZE)
@@ -29,12 +29,32 @@ async def main():
     #current_scene = Menu(canvas)
     current_scene = 0
 
+    previous_display_size = pygame.display.get_window_size()
+
     running = True
     while running:
+        events = pygame.event.get()
+
+        for event in events:
+            match event.type:
+                case pygame.QUIT:
+                    running = False
+                case pygame.KEYDOWN:
+                    match event.key:
+                        case pygame.K_ESCAPE:
+                            running = False
+                        case pygame.K_f:
+                            if pygame.display.is_fullscreen():
+                                pygame.display.toggle_fullscreen()
+                                screen = pygame.display.set_mode(previous_display_size, flags=pygame.RESIZABLE)
+                            else:
+                                previous_display_size = pygame.display.get_window_size()
+                                pygame.display.toggle_fullscreen()
+                case pygame.JOYDEVICEADDED:
+                    Gamepad.init()
+
         # Scene state manager
-        match scenes[current_scene].update():
-            case SceneState.QUIT:
-                running = False
+        match scenes[current_scene].update(events):
             case SceneState.MENU:
                 current_scene = 0
             case SceneState.CONTROLS:
@@ -54,7 +74,23 @@ async def main():
 
         # Update the screen (flip() swaps the backbuffer and framebuffer)
         Tileset.render_tile(canvas, Tileset.render_string(f"{int(clock.get_fps())}"), 27, 0)
-        pygame.transform.scale(canvas, WINDOW_SIZE, screen)
+        window_size = pygame.display.get_window_size()
+        scaled_size = list(window_size)
+        position = [0, 0]
+        if window_size[0] > window_size[1]:
+            scale = window_size[1]/SCREEN_SIZE[1]
+            scaled_size[0] = SCREEN_SIZE[0]*scale
+            position[0] = (window_size[0]/2)-(scaled_size[0]/2)
+        else:
+            scale = window_size[0]/SCREEN_SIZE[0]
+            scaled_size[1] = SCREEN_SIZE[1]*scale
+            position[1] = (window_size[1]/2)-(scaled_size[1]/2)
+
+        scaled_screen = pygame.Surface(scaled_size)
+        
+        pygame.transform.scale(canvas, scaled_size, scaled_screen)
+        screen.fill((0, 0, 0))
+        screen.blit(scaled_screen, position)
 
         pygame.display.flip()
 
