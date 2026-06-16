@@ -11,19 +11,14 @@ class Controls(Scene):
         super().__init__(surface)
         self.text = Tileset.render_string("WASD/Arrow keys to move")
 
-    def update(self):
+    def update(self, events):
         next_state = SceneState.NO_CHANGE
 
-        for event in pygame.event.get():
+        for event in events:
             match event.type:
-                case pygame.QUIT:
-                    next_state = SceneState.QUIT
                 case pygame.KEYDOWN:
-                    match event.key:
-                        case pygame.K_ESCAPE:
-                            next_state = SceneState.QUIT
-                        case pygame.K_BACKSPACE:
-                            next_state = SceneState.MENU
+                    if event.key == pygame.K_BACKSPACE:
+                        next_state = SceneState.MENU
                 case pygame.JOYBUTTONDOWN:
                     if event.button == 1:
                         next_state = SceneState.MENU
