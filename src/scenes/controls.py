@@ -24,6 +24,9 @@ class Controls(Scene):
                             next_state = SceneState.QUIT
                         case pygame.K_BACKSPACE:
                             next_state = SceneState.MENU
+                case pygame.JOYBUTTONDOWN:
+                    if event.button == 1:
+                        next_state = SceneState.MENU
 
         self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.text, 0, 0)

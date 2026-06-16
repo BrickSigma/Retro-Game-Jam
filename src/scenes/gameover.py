@@ -2,6 +2,7 @@ from src.scenes.scene import Scene, SceneState
 import pygame
 import src.tileset as Tileset
 from src.tileset import TileType
+import src.gamepad as Gamepad
 
 class GameOver(Scene):
     COLORS = [
@@ -22,6 +23,15 @@ class GameOver(Scene):
     def update(self) -> SceneState:
         next_state = SceneState.NO_CHANGE
 
+        # Handle joystick input
+        joystick = Gamepad.get_joystick()
+        if joystick is not None:
+            y_axis = joystick.get_axis(Gamepad.LEFT_Y_AXIS)
+            if y_axis < -Gamepad.AXIS_THESHOLD:
+                self.selected = 0
+            elif y_axis > Gamepad.AXIS_THESHOLD:
+                self.selected = 1
+
         for event in pygame.event.get():
             match event.type:
                 case pygame.QUIT:
@@ -39,6 +49,12 @@ class GameOver(Scene):
                                 next_state = SceneState.GAME # Restart the game
                             else:
                                 next_state = SceneState.MENU # back to menu
+                case pygame.JOYBUTTONDOWN:
+                    if event.button == 0:
+                        if self.selected == 0:
+                            next_state = SceneState.GAME # Restart the game
+                        else:
+                            next_state = SceneState.MENU # back to menu
         
         self.surface.fill((0,0,0))
 
