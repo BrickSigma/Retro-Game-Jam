@@ -22,11 +22,11 @@ class Spike(Entity):
     @property
     def rect(self):
         if self.rotation == 0:
-            return pygame.Rect(self.x + 1, self.y + 5, TILE_SIZE - 2, 3)
+            return pygame.Rect(self.x + 2, self.y + 5, TILE_SIZE - 4, 3)
         elif self.rotation == 90:   # tips face left — hitbox on left edge
-            return pygame.Rect(self.x, self.y + 1, 3, TILE_SIZE - 2)
+            return pygame.Rect(self.x, self.y + 2, 3, TILE_SIZE - 4)
         elif self.rotation == -90:    # tips face right — hitbox on right edge
-            return pygame.Rect(self.x + 5, self.y + 1, 3, TILE_SIZE - 2)
+            return pygame.Rect(self.x + 5, self.y + 2, 3, TILE_SIZE - 4)
         else:
             return pygame.Rect(self.x, self.y + 4, TILE_SIZE, 3)
 
