@@ -45,7 +45,7 @@ async def main():
                 current_scene = 3
             case SceneState.GAME_OVER:
                 current_scene = 4
-                scenes[2].level.respawn()
+                scenes[2].level.restart()
             case SceneState.NO_CHANGE:
                 pass
             case _:
