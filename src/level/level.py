@@ -70,10 +70,22 @@ class Level:
     LAYER_BACKGROUND = "background"
     LAYER_BACKGROUND2 = "background2"
 
-    def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
+    def __init__(self, 
+                 surface: pygame.Surface, 
+                 level_no: int, 
+                 camera_type: CameraState = CameraState.HORIZONTAL, 
+                 hud_background: tuple[float] = (47, 36, 59),
+                 background_layer: bool = True):
+        
         self.surface = surface
         self.level_no = level_no
         self.level_folder = resource_path(f"assets/levels/{self.level_no}")
+
+        self.hud_background = hud_background
+        self.background_layer: pygame.Surface | None = None
+
+        if background_layer:
+            self.background_layer = pygame.image.load(resource_path(f"{self.level_folder}/background.png"))
 
         """
         Every item in the game is dependant on the player's position,
@@ -497,8 +509,11 @@ class Level:
             self.camera.update(self.player.rect)
 
         # Clear surface
-        self.surface.fill(self.PALETTE['background'])
-        self.viewport.fill(self.PALETTE['background'])
+        self.surface.fill(self.hud_background)
+        if self.background_layer is not None:
+            self.viewport.blit(self.background_layer)
+        else:
+            self.viewport.fill(self.hud_background)
 
         # Draw HUD - level name on left, hearts on right
         Tileset.render_tile(self.surface, self.level_banner, 0, 0)

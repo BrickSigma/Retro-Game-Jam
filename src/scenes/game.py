@@ -13,12 +13,12 @@ class Game(Scene):
         self.text = Tileset.render_string("Main Game")
 
         self.levels = [
-            Level(self.surface, 1),
-            Level(self.surface, 2, CameraState.VERTICAL),
-            Level(self.surface, 3)
+            Level(self.surface, 1, background_layer=True),
+            Level(self.surface, 2, CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
+            Level(self.surface, 3, background_layer=True)
         ]
 
-        self.current_level = 0
+        self.current_level = 2
         self.level = self.levels[self.current_level]
 
     def next_level(self):
