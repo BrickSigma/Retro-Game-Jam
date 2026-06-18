@@ -68,10 +68,10 @@ class TiledMap:
         LAYER_BACKGROUND2 = "background2"
 
         # Save all renders as a PNG
-        # viewport = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
-        # viewport.fill(PALETTE['purple'])
+        viewport = pygame.Surface((self.width*self.tile_size, self.height*self.tile_size), pygame.SRCALPHA)
+        viewport.fill(PALETTE['purple'])
 
-        # self.draw_layer_without_camera(viewport, LAYER_PLATFORM)
+        self.draw_layer_without_camera(viewport, LAYER_PLATFORM)
 
         # self.draw_layer_without_camera(viewport, LAYER_BG_PURPLE, PALETTE['purple'])
         # self.draw_layer_without_camera(viewport, LAYER_BG_RED,    PALETTE['red'])
@@ -86,7 +86,7 @@ class TiledMap:
         # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_GREEN,  PALETTE['green'])
         # self.draw_layer_without_camera(viewport, LAYER_PLATFORM_CREAM,  PALETTE['cream'])
 
-        # pygame.image.save(viewport, f"{self._file}.png")
+        pygame.image.save(viewport, f"{self._file}.png")
 
     def _prerender_map(self, layer):
         """
