@@ -13,9 +13,10 @@ class Game(Scene):
         self.text = Tileset.render_string("Main Game")
 
         self.levels = [
-            Level(self.surface, 1, background_layer=True),
-            Level(self.surface, 2, CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
-            Level(self.surface, 3, background_layer=True)
+            Level(self.surface, 1, "peaceful.wav", background_layer=True),
+            Level(self.surface, 4, "peaceful.wav", background_layer=True),
+            Level(self.surface, 5, "techno.wav", CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
+            Level(self.surface, 6, "difficult.wav", background_layer=True)
         ]
 
         self.current_level = 0

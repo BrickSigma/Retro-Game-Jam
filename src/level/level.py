@@ -72,6 +72,7 @@ class Level:
     def __init__(self, 
                  surface: pygame.Surface, 
                  level_no: int, 
+                 music_file: str,
                  camera_type: CameraState = CameraState.HORIZONTAL, 
                  hud_background: tuple[float] = (47, 36, 59),
                  background_layer: bool = True):
@@ -79,12 +80,14 @@ class Level:
         self.surface = surface
         self.level_no = level_no
         self.level_folder = resource_path(f"assets/levels/{self.level_no}")
+        self.music_folder = resource_path("assets/music")
+        self.music_file = music_file
 
         self.hud_background = hud_background
         self.background_layer: pygame.Surface | None = None
 
         if background_layer:
-            self.background_layer = pygame.image.load(resource_path(f"{self.level_folder}/background.png"))
+            self.background_layer = pygame.image.load(resource_path(f"{self.level_folder}/../background.png"))
 
         """
         Every item in the game is dependant on the player's position,
@@ -291,9 +294,9 @@ class Level:
             return  # Do nothing if it's already playing a track
         
         if self._checkpoint_data is not None:
-            pygame.mixer.music.load(f"{self.level_folder}/boss.mp3")
+            pygame.mixer.music.load(f"{self.music_folder}/boss.mp3")
         else:
-            pygame.mixer.music.load(f"{self.level_folder}/music.wav")
+            pygame.mixer.music.load(f"{self.music_folder}/{self.music_file}")
             
         pygame.mixer.music.set_volume(0.2)
         pygame.mixer.music.play(fade_ms=2000)
