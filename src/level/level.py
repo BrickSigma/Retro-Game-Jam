@@ -9,7 +9,6 @@ Most of the gameplay takes place here.
 from enum import Enum, unique, auto
 import pygame
 
-from src.entities.torch import Torch
 import src.tileset as Tileset
 from src.tileset import TileType
 from src.constants import resource_path, FPS
@@ -18,7 +17,6 @@ from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
 from src.entities import *
 from src.guardian import Guardian, GuardianState
-import src.gamepad as Gamepad
 
 """
 INTERNAL NOTES:
@@ -75,13 +73,16 @@ class Level:
                  music_file: str,
                  camera_type: CameraState = CameraState.HORIZONTAL, 
                  hud_background: tuple[float] = (47, 36, 59),
-                 background_layer: bool = True):
+                 background_layer: bool = True,
+                 text_guides: list[Tileset.GuideText] = []):
         
         self.surface = surface
         self.level_no = level_no
         self.level_folder = resource_path(f"assets/levels/{self.level_no}")
         self.music_folder = resource_path("assets/music")
         self.music_file = music_file
+
+        self.text_guides = text_guides
 
         self.hud_background = hud_background
         self.background_layer: pygame.Surface | None = None
@@ -543,6 +544,9 @@ class Level:
 
         camera_pos = self.camera.get_pos()
         self.viewport.blit(self.platform_surface, (-camera_pos[0], -camera_pos[1]))
+
+        for text_guide in self.text_guides:
+            self.viewport.blit(text_guide.text_surf, (text_guide.pos[0] - camera_pos[0], text_guide.pos[1] - camera_pos[1]))
 
         player_is_dead = self.player.state == PlayerState.DEAD
 

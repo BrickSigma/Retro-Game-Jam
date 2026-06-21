@@ -13,7 +13,15 @@ class Game(Scene):
         self.text = Tileset.render_string("Main Game")
 
         self.levels = [
-            Level(self.surface, 1, "peaceful.wav", background_layer=True),
+            Level(
+                self.surface, 
+                1, "peaceful.wav", 
+                background_layer=True,
+                text_guides=[
+                        Tileset.GuideText("Use A/D to move to the gate", (16, 24)),
+                        Tileset.GuideText("Press space to jump", (16, 40))
+                ]
+            ),
             Level(self.surface, 4, "peaceful.wav", background_layer=True),
             Level(self.surface, 5, "techno.wav", CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
             Level(self.surface, 6, "difficult.wav", background_layer=True)
