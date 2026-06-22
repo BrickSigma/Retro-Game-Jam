@@ -160,3 +160,8 @@ def change_letter_color(tile: pygame.Surface, color: tuple[int, int, int]) -> py
     This essentially converts any black pixels to the new color.
     """
     return swap_color(tile, (255, 255, 255), color)
+
+class GuideText:
+    def __init__(self, text: str, pos: tuple[int, int]):
+        self.text_surf = render_string(text)
+        self.pos = list(pos)

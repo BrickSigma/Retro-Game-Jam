@@ -11,19 +11,17 @@ class Credits(Scene):
         super().__init__(surface)
         self.text = Tileset.render_string("Credits")
 
-    def update(self):
+    def update(self, events):
         next_state = SceneState.NO_CHANGE
 
-        for event in pygame.event.get():
+        for event in events:
             match event.type:
-                case pygame.QUIT:
-                    next_state = SceneState.QUIT
                 case pygame.KEYDOWN:
-                    match event.key:
-                        case pygame.K_ESCAPE:
-                            next_state = SceneState.QUIT
-                        case pygame.K_BACKSPACE:
-                            next_state = SceneState.MENU
+                    if event.key in (pygame.K_BACKSPACE, pygame.K_RETURN):
+                        next_state = SceneState.MENU
+                case pygame.JOYBUTTONDOWN:
+                    if event.button in (0, 1):
+                        next_state = SceneState.MENU
 
         self.surface.fill((0, 0, 0))
         Tileset.render_tile(self.surface, self.text, 0, 0)

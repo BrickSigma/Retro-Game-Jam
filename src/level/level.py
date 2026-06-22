@@ -9,7 +9,6 @@ Most of the gameplay takes place here.
 from enum import Enum, unique, auto
 import pygame
 
-from src.entities.torch import Torch
 import src.tileset as Tileset
 from src.tileset import TileType
 from src.constants import resource_path, FPS
@@ -18,7 +17,6 @@ from src.tiledmap import TiledMap
 from src.player import Player, PlayerUpdateState, PlayerState
 from src.entities import *
 from src.guardian import Guardian, GuardianState
-import src.gamepad as Gamepad
 
 """
 INTERNAL NOTES:
@@ -34,7 +32,6 @@ class LevelState(Enum):
     NO_CHANGE = auto()
     NEXT_LEVEL = auto()     # Moves onto the next level
     GAME_OVER = auto()
-    QUIT = auto()
     BOSS_DEFEATED = auto()  # boss killed — triggers credits
 
 @unique
@@ -70,10 +67,28 @@ class Level:
     LAYER_BACKGROUND = "background"
     LAYER_BACKGROUND2 = "background2"
 
-    def __init__(self, surface: pygame.Surface, level_no: int, camera_type: CameraState = CameraState.HORIZONTAL):
+    def __init__(self, 
+                 surface: pygame.Surface, 
+                 level_no: int, 
+                 music_file: str,
+                 camera_type: CameraState = CameraState.HORIZONTAL, 
+                 hud_background: tuple[float] = (47, 36, 59),
+                 background_layer: bool = True,
+                 text_guides: list[Tileset.GuideText] = []):
+        
         self.surface = surface
         self.level_no = level_no
         self.level_folder = resource_path(f"assets/levels/{self.level_no}")
+        self.music_folder = resource_path("assets/music")
+        self.music_file = music_file
+
+        self.text_guides = text_guides
+
+        self.hud_background = hud_background
+        self.background_layer: pygame.Surface | None = None
+
+        if background_layer:
+            self.background_layer = pygame.image.load(resource_path(f"{self.level_folder}/../background.png"))
 
         """
         Every item in the game is dependant on the player's position,
@@ -280,32 +295,24 @@ class Level:
             return  # Do nothing if it's already playing a track
         
         if self._checkpoint_data is not None:
-            pygame.mixer.music.load(f"{self.level_folder}/boss.mp3")
+            pygame.mixer.music.load(f"{self.music_folder}/boss.mp3")
         else:
-            pygame.mixer.music.load(f"{self.level_folder}/music.wav")
+            pygame.mixer.music.load(f"{self.music_folder}/{self.music_file}")
             
         pygame.mixer.music.set_volume(0.2)
         pygame.mixer.music.play(fade_ms=2000)
         
 
-    def update(self) -> LevelState:
+    def update(self, events: list[pygame.Event]) -> LevelState:
         next_state = LevelState.NO_CHANGE
 
         self.handle_music()
-        
-        events = pygame.event.get()
 
         # Event handling can take place here
         for event in events:
             match event.type:
-                case pygame.JOYDEVICEADDED:
-                    Gamepad.init()
-                case pygame.QUIT:
-                    next_state = LevelState.QUIT
                 case pygame.KEYDOWN:
                     match event.key:
-                        case pygame.K_ESCAPE:
-                            next_state = LevelState.QUIT
                         case pygame.K_BACKSPACE:
                             self.restart()
                         case pygame.K_l:
@@ -497,8 +504,11 @@ class Level:
             self.camera.update(self.player.rect)
 
         # Clear surface
-        self.surface.fill(self.PALETTE['background'])
-        self.viewport.fill(self.PALETTE['background'])
+        self.surface.fill(self.hud_background)
+        if self.background_layer is not None:
+            self.viewport.blit(self.background_layer)
+        else:
+            self.viewport.fill(self.hud_background)
 
         # Draw HUD - level name on left, hearts on right
         Tileset.render_tile(self.surface, self.level_banner, 0, 0)
@@ -534,6 +544,9 @@ class Level:
 
         camera_pos = self.camera.get_pos()
         self.viewport.blit(self.platform_surface, (-camera_pos[0], -camera_pos[1]))
+
+        for text_guide in self.text_guides:
+            self.viewport.blit(text_guide.text_surf, (text_guide.pos[0] - camera_pos[0], text_guide.pos[1] - camera_pos[1]))
 
         player_is_dead = self.player.state == PlayerState.DEAD
 

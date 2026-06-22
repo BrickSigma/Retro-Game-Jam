@@ -112,6 +112,9 @@ class Player:
         self.wielding_sword  = False
         self.sword_swinging  = False
 
+        # God mode setting - disables player death against enemies when True
+        self.god_mode = False
+
         # adding animation to player character
         self.animations = {
             PlayerState.IDLE: Animator(frames = [TileType.PLAYER_IDLE.value], speed = 20),
@@ -212,6 +215,11 @@ class Player:
                             if self.wielding_sword and not self.sword_swinging:
                                 self.sword_swinging = True
                                 self._swing_timer = self.SWING_DURATION
+
+                        case pygame.K_g:
+                            # Flip the god mode setting
+                            self.god_mode = not self.god_mode
+                            print(f"God mode {"enabled" if self.god_mode else "disabled"}")
 
                 case pygame.JOYBUTTONDOWN:
                     if event.button == 0:
@@ -506,8 +514,9 @@ class Player:
                 elif self._invulnerability_timer > 0:
                     pass  # still invulnerable
                 else:
-                    self.change_state_to(PlayerState.DEAD)
-                    self.DEATH_SFX.play()
+                    if not self.god_mode:
+                        self.change_state_to(PlayerState.DEAD)
+                        self.DEATH_SFX.play()
                 break
 
         # Check if the player fell out of the world

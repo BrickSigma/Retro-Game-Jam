@@ -8,7 +8,7 @@ joystick: pygame.joystick.JoystickType | None = None
 
 LEFT_X_AXIS = 0
 LEFT_Y_AXIS = 1
-AXIS_THESHOLD = 0.6
+AXIS_THESHOLD = 0.65
 
 def init():
     global joystick

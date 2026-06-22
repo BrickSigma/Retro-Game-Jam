@@ -1,5 +1,9 @@
-# 8bits to Infinity Retro Game Jam
+# Skyfall
 This is our repository code for the 2026 8bits to Infinity Retro Game Jam submission. The game is built using Python and Pygame.
+
+This game was originally designed for the 2026 8bits to Infinity Retro Game Jam, however, we have reused it for our multimedia applications group project for university.
+
+The game is build using Python and Pygame, with level loading handled by Tiled.
 
 ## Project Stucture
 The project is structured in the following way (as of now):
@@ -41,4 +45,6 @@ def update() -> State: ...
 ```
 `__init__` will initialize the state to a default setting when it's entered from a different state, and `update` will run each frame the game is on the state. It should be noted that the depeest call to `update` will handle all events and rendering to the screen.
 
+
+## Building an executable
 To build an executable, first install pyinstaller `pip install pyinstaller` then run the command `python -m PyInstaller Skyfall.spec`
