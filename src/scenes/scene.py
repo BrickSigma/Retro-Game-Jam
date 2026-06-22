@@ -10,7 +10,6 @@ class SceneState(Enum):
     GAME = auto()
     CREDITS = auto()
     GAME_OVER = auto()
-    QUIT = auto()
     """Quit the game"""
 
 class Scene(ABC):
@@ -25,7 +24,7 @@ class Scene(ABC):
         self.surface = surface
 
     @abstractmethod
-    def update(self) -> SceneState:
+    def update(self, events: list[pygame.Event]) -> SceneState:
         """
         Function that runs every frame in the game loop.
 

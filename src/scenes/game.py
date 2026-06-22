@@ -13,9 +13,18 @@ class Game(Scene):
         self.text = Tileset.render_string("Main Game")
 
         self.levels = [
-            Level(self.surface, 1),
-            Level(self.surface, 2, CameraState.VERTICAL),
-            Level(self.surface, 3)
+            Level(
+                self.surface, 
+                1, "peaceful.wav", 
+                background_layer=True,
+                text_guides=[
+                        Tileset.GuideText("Use A/D to move to the gate", (16, 24)),
+                        Tileset.GuideText("Press space to jump", (16, 40))
+                ]
+            ),
+            Level(self.surface, 4, "peaceful.wav", background_layer=True),
+            Level(self.surface, 5, "techno.wav", CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
+            Level(self.surface, 6, "difficult.wav", background_layer=True)
         ]
 
         self.current_level = 0
@@ -26,13 +35,11 @@ class Game(Scene):
         self.current_level += 1
         self.level = self.levels[self.current_level]
 
-    def update(self):
+    def update(self, events):
         """Main game loop sits here"""
         next_state = SceneState.NO_CHANGE
 
-        match self.level.update():
-            case LevelState.QUIT:
-                next_state = SceneState.QUIT
+        match self.level.update(events):
             case LevelState.NEXT_LEVEL:
                 if (self.current_level + 1) >= len(self.levels):
                     next_state = SceneState.CREDITS

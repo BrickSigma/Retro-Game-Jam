@@ -142,6 +142,9 @@ class Guardian:
 
     def trigger_level3_upgrade(self):
         """Level 3 upgrade — gold tint, unlocks sword and decoy"""
+        # Trigger level 2 upgrade as well
+        self.trigger_upgrade()
+
         self.upgraded_l3   = True
         self.flash_timer   = self.FLASH_DURATION
         self.flash_color   = self.GOLD
