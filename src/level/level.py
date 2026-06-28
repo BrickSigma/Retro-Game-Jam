@@ -548,7 +548,7 @@ class Level:
 
         if self.player.god_mode:
             god_banner = Tileset.change_letter_color(Tileset.render_string("god"), (255, 215, 0))
-            Tileset.render_tile(self.surface, god_banner, 28, 0)
+            Tileset.render_tile(self.surface, god_banner, 19, 1, 4, -4)
     
         # Draw world layers
         # Legacy layers — drawn first so palette layers render on top during migration
