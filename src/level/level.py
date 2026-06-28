@@ -74,7 +74,8 @@ class Level:
                  camera_type: CameraState = CameraState.HORIZONTAL, 
                  hud_background: tuple[float] = (47, 36, 59),
                  background_layer: bool = True,
-                 text_guides: list[Tileset.GuideText] = []):
+                 text_guides: list[Tileset.GuideText] = [],
+                 unload_music: bool = True):
         
         self.surface = surface
         self.level_no = level_no
@@ -89,6 +90,9 @@ class Level:
 
         if background_layer:
             self.background_layer = pygame.image.load(resource_path(f"{self.level_folder}/../background.png"))
+
+        # Used to unload the music when going to another level
+        self.unload_music = unload_music
 
         """
         Every item in the game is dependant on the player's position,
@@ -484,13 +488,15 @@ class Level:
                 self.lives = max(0, self.lives - 1)
                 if self.lives <=0:
                     # Also stop the music
-                    pygame.mixer.music.unload()
+                    if self.unload_music:
+                        pygame.mixer.music.unload()
                     next_state = LevelState.GAME_OVER # signal game over to game.py
                 else:
                     self.respawn() # sof reset, keep remaining lives
             case PlayerUpdateState.COMPLETED_LEVEL:
                 # Stop the music as well
-                pygame.mixer.music.unload()
+                if self.unload_music:
+                    pygame.mixer.music.unload()
                 next_state = LevelState.NEXT_LEVEL
 
         # Camera: pan to boss during spawn, lock once the fight starts
