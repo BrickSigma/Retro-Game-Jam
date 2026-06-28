@@ -10,7 +10,7 @@ from src.animator import Animator
 from src.entities.entity import Entity, EntityType
 from src.entities.ghost import GhostState
 from src.guardian import GuardianState
-from src.constants import FPS, resource_path
+from src.constants import FPS, DEBUG, resource_path
 import src.gamepad as Gamepad
 
 @unique
@@ -217,9 +217,9 @@ class Player:
                                 self._swing_timer = self.SWING_DURATION
 
                         case pygame.K_g:
-                            # Flip the god mode setting
-                            self.god_mode = not self.god_mode
-                            print(f"God mode {"enabled" if self.god_mode else "disabled"}")
+                            if DEBUG:
+                                self.god_mode = not self.god_mode
+                                print(f"God mode {"enabled" if self.god_mode else "disabled"}")
 
                 case pygame.JOYBUTTONDOWN:
                     if event.button == 0:
@@ -521,8 +521,9 @@ class Player:
 
         # Check if the player fell out of the world
         if self.rect.y + self.rect.h > self.stage_size[1]*TILE_SIZE:
-            next_state = PlayerUpdateState.DIED
-            self.DEATH_SFX.play()
+            if not self.god_mode:
+                next_state = PlayerUpdateState.DIED
+                self.DEATH_SFX.play()
 
         return next_state
 
