@@ -73,7 +73,7 @@ async def main():
             
 
         # Update the screen (flip() swaps the backbuffer and framebuffer)
-        Tileset.render_tile(canvas, Tileset.render_string(f"{int(clock.get_fps())}"), 27, 0)
+        # Tileset.render_tile(canvas, Tileset.render_string(f"{int(clock.get_fps())}"), 27, 0)
         window_size = pygame.display.get_window_size()
         scaled_size = list(window_size)
         position = [0, 0]
