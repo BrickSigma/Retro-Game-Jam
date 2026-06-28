@@ -20,7 +20,8 @@ class Game(Scene):
                 text_guides=[
                         Tileset.GuideText("Use A/D to move to the gate", (16, 24)),
                         Tileset.GuideText("Press space to jump", (16, 40))
-                ]
+                ],
+                unload_music=False
             ),
             Level(self.surface, 4, "peaceful.wav", background_layer=True),
             Level(self.surface, 5, "techno.wav", CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
