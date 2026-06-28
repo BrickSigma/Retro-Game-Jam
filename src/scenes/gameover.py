@@ -1,36 +1,48 @@
 from src.scenes.scene import Scene, SceneState
 import pygame
 import src.tileset as Tileset
-from src.tileset import TileType
+from src.constants import resource_path
 import src.gamepad as Gamepad
 
 class GameOver(Scene):
-    COLORS = [
-        (255, 0, 0),
-        (255, 165, 0),
-    ]
+    MAX_JOYSTICK_DELAY = 20
+    LIGHT_BLUE = (203, 219, 252)
 
     def __init__(self, surface):
         super().__init__(surface)
-        self.title       = Tileset.render_string("Game Over")
-        self.retry       = Tileset.render_string("Retry")
-        self.menu        = Tileset.render_string("Menu")
-        self.arrow       = Tileset.get_tile(TileType.ARROW.value)
+        self.background = pygame.image.load(resource_path("assets/levels/game-over-screen.png"))
+        
+        self.retry = Tileset.change_letter_color(Tileset.render_string("Retry"), self.LIGHT_BLUE)
+        self.menu = Tileset.change_letter_color(Tileset.render_string("Menu"), self.LIGHT_BLUE)
+        
         self.selected    = 0
-        self.counter     = 0
-        self.color       = 0
+
+        self.arrow = Tileset.change_letter_color(Tileset.get_tile(39), self.LIGHT_BLUE)
+        self.selected = 0
+        self.joystick_delay = 0
+
+    def play_music(self):
+        pygame.mixer.music.load(resource_path("assets/music/game-over.mp3"))
+        pygame.mixer.music.play(1)
     
     def update(self, events) -> SceneState:
         next_state = SceneState.NO_CHANGE
+
+        # Decrease the joystick delay each frame so that it doesn't immediately go to the bottom
+        self.joystick_delay -= 1
+        if self.joystick_delay < 0:
+            self.joystick_delay = 0
 
         # Handle joystick input
         joystick = Gamepad.get_joystick()
         if joystick is not None:
             y_axis = joystick.get_axis(Gamepad.LEFT_Y_AXIS)
-            if y_axis < -Gamepad.AXIS_THESHOLD:
+            if y_axis < -Gamepad.AXIS_THESHOLD and self.joystick_delay == 0:
                 self.selected = 0
-            elif y_axis > Gamepad.AXIS_THESHOLD:
+                self.joystick_delay = self.MAX_JOYSTICK_DELAY
+            elif y_axis > Gamepad.AXIS_THESHOLD and self.joystick_delay == 0:
                 self.selected = 1
+                self.joystick_delay = self.MAX_JOYSTICK_DELAY
 
         for event in events:
             match event.type:
@@ -52,31 +64,12 @@ class GameOver(Scene):
                         else:
                             next_state = SceneState.MENU # back to menu
         
-        self.surface.fill((0,0,0))
-
-        # Tile - rendered in the upper middle area
-        Tileset.render_tile(self.surface, self.title, 10, 6)
-
-        # Draw 3 hearts greyed out to show all lives lost
-        heart = Tileset.get_tile(TileType.HEART.value)
-        grey_heart = Tileset.change_letter_color(heart, (80,80,80))
-        for i in range(3):
-            Tileset.render_tile(self.surface, grey_heart, 13 + i, 10)
+        self.surface.blit(self.background)
         
         # Menu options
-        Tileset.render_tile(self.surface, self.retry, 12, 16)
-        Tileset.render_tile(self.surface, self.menu, 12, 18)
+        Tileset.render_tile(self.surface, self.retry, 14, 11)
+        Tileset.render_tile(self.surface, self.menu, 14, 13)
 
-        # Animated arrow next to selected option
-        for i in range(2):
-            arrow = self.arrow
-            if i == self.selected:
-                arrow = Tileset.change_letter_color(arrow, self.COLORS[self.color])
-            Tileset.render_tile(self.surface, arrow, 10, 16 + (i * 2))
-
-        # Cycle arrow color
-        self.counter += 1
-        if self.counter % 25 == 0:
-            self.color = (self.color + 1) % len(self.COLORS)
+        Tileset.render_tile(self.surface, self.arrow, 12, 11 + self.selected*2)
         
         return next_state
