@@ -83,10 +83,13 @@ class Menu(Scene):
 
                 case pygame.JOYBUTTONDOWN:
                     if event.button == 0:
-                        if self.selected == 0:
-                            next_state = SceneState.GAME
-                        else:
-                            next_state = SceneState.CONTROLS
+                        match (self.selected):
+                            case 0:
+                                next_state = SceneState.GAME
+                            case 1: 
+                                next_state = SceneState.CONTROLS
+                            case 2:
+                                next_state = SceneState.CREDITS
 
         self.surface.blit(self.background)
 

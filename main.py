@@ -27,7 +27,7 @@ async def main():
     ]
 
     #current_scene = Menu(canvas)
-    current_scene = 0
+    current_scene = 1
 
     previous_display_size = pygame.display.get_window_size()
 
