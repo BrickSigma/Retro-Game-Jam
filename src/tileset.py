@@ -108,9 +108,9 @@ def get_tile(index: int) -> pygame.Surface:
     y = (index // 16)
     return tileset.subsurface((x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE))
 
-def render_tile(surf: pygame.Surface, tile: pygame.Surface, x: int, y: int) -> None:
+def render_tile(surf: pygame.Surface, tile: pygame.Surface, x: int, y: int, offset_x: int = 0, offset_y: int = 0) -> None:
     """Render a tile to an indexed point on the surface"""
-    surf.blit(tile, (x*TILE_SIZE, y*TILE_SIZE))
+    surf.blit(tile, (x*TILE_SIZE + offset_x, y*TILE_SIZE + offset_y))
 
 def get_char(char: str) -> pygame.Surface:
     """Get the tile for a single character"""
@@ -157,7 +157,7 @@ def change_letter_color(tile: pygame.Surface, color: tuple[int, int, int]) -> py
     """
     Convert the colors on a character tile (or even string).
 
-    This essentially converts any black pixels to the new color.
+    This essentially converts any white pixels to the new color.
     """
     return swap_color(tile, (255, 255, 255), color)
 

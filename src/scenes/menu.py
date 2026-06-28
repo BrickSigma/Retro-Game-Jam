@@ -88,8 +88,6 @@ class Menu(Scene):
                         else:
                             next_state = SceneState.CONTROLS
 
-        self.surface.fill((0, 0, 0))
-
         self.surface.blit(self.background)
 
         Tileset.render_tile(self.surface, self.start_button, 12, 23)

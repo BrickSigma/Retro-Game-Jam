@@ -57,6 +57,7 @@ async def main():
         match scenes[current_scene].update(events):
             case SceneState.MENU:
                 current_scene = 0
+                scenes[2].reset()
             case SceneState.CONTROLS:
                 current_scene = 1
             case SceneState.GAME:
@@ -65,7 +66,8 @@ async def main():
                 current_scene = 3
             case SceneState.GAME_OVER:
                 current_scene = 4
-                scenes[2].level.restart()
+                scenes[4].play_music()
+                scenes[2].reset_current_level()
             case SceneState.NO_CHANGE:
                 pass
             case _:

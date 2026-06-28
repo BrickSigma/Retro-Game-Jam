@@ -67,6 +67,8 @@ class Level:
     LAYER_BACKGROUND = "background"
     LAYER_BACKGROUND2 = "background2"
 
+    LIGHT_BLUE = (203, 219, 252)
+
     def __init__(self, 
                  surface: pygame.Surface, 
                  level_no: int, 
@@ -135,11 +137,15 @@ class Level:
         self._credits_timer  = 0
         self._checkpoint_data: dict | None = None
 
-        # HUD banners — built once, not every frame
-        self.level_banner = Tileset.render_string(f"Level: {level_no}")
-        self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
+        # HUD banners - built once, not every frame
+        self.level_banner = Tileset.change_letter_color(Tileset.render_string(f"Level: {level_no}"), self.LIGHT_BLUE)
+
+        self.heart = Tileset.change_letter_color(Tileset.get_tile(TileType.HEART.value), self.LIGHT_BLUE)
+        self.dead_heart = Tileset.swap_color(self.heart, self.LIGHT_BLUE, (104, 111, 153))
+        self.orb = Tileset.change_letter_color(Tileset.get_tile(TileType.JEWEL.value), self.LIGHT_BLUE)
+        self.empty_orb = Tileset.swap_color(self.orb, self.LIGHT_BLUE, (104, 111, 153))
         
-        # restart() called last — player and guardian are ready
+        # restart() called last - player and guardian are ready
         self.restart()
         
 
@@ -156,7 +162,6 @@ class Level:
         self._credits_timer  = 0
         self._checkpoint_data = None  # full restart clears checkpoint
         self.camera.unlock()
-        self.lives_banner = Tileset.render_string(f"Lives: {self.lives}")
 
         # Reset all guardian upgrades on full restart
         self.guardian.upgraded_l2    = False
@@ -517,19 +522,20 @@ class Level:
             self.viewport.fill(self.hud_background)
 
         # Draw HUD - level name on left, hearts on right
-        Tileset.render_tile(self.surface, self.level_banner, 0, 0)
-        heart = Tileset.get_tile(TileType.HEART.value)
-        for i in range(self.lives):
-            Tileset.render_tile(self.surface, heart, 20 + i, 0)
+        Tileset.render_tile(self.surface, self.level_banner, 1, 1, -4, -4)
+        
+        for i in range(self.MAX_LIVES):
+            if i < self.lives:
+                Tileset.render_tile(self.surface, self.heart, 28 + i, 1, 4, -4)
+            else:
+                Tileset.render_tile(self.surface, self.dead_heart, 28 + i, 1, 4, -4)
 
         # Draw spirt charge orbs next to hearts
-        orb = Tileset.get_tile(TileType.JEWEL.value)
-        empty_orb = Tileset.change_letter_color(orb, (80, 80, 80))
         for i in range(self.MAX_CHARGES):
             if i < self.charges:
-                Tileset.render_tile(self.surface, orb, 24 + i, 0)
+                Tileset.render_tile(self.surface, self.orb, 23 + i, 1, 4, -4)
             else:
-                Tileset.render_tile(self.surface, empty_orb, 24 + i, 0)
+                Tileset.render_tile(self.surface, self.empty_orb, 23 + i, 1, 4, -4)
     
         # Draw world layers
         # Legacy layers — drawn first so palette layers render on top during migration
