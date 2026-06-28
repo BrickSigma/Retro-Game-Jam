@@ -27,7 +27,7 @@ async def main():
     ]
 
     #current_scene = Menu(canvas)
-    current_scene = 1
+    current_scene = 0
 
     previous_display_size = pygame.display.get_window_size()
 
@@ -50,6 +50,14 @@ async def main():
                             else:
                                 previous_display_size = pygame.display.get_window_size()
                                 pygame.display.toggle_fullscreen()
+                case pygame.JOYBUTTONDOWN:
+                    if event.button == 6:
+                        if pygame.display.is_fullscreen():
+                            pygame.display.toggle_fullscreen()
+                            screen = pygame.display.set_mode(previous_display_size, flags=pygame.RESIZABLE)
+                        else:
+                            previous_display_size = pygame.display.get_window_size()
+                            pygame.display.toggle_fullscreen()
                 case pygame.JOYDEVICEADDED:
                     Gamepad.init()
 
