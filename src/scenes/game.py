@@ -31,6 +31,16 @@ class Game(Scene):
         self.current_level = 0
         self.level = self.levels[self.current_level]
 
+    def reset(self):
+        for level in self.levels:
+            level.restart()
+
+        self.current_level = 0
+        self.level = self.levels[self.current_level]
+
+    def reset_current_level(self):
+        self.level.restart()
+
     def next_level(self):
         """Move to the next level"""
         self.current_level += 1
