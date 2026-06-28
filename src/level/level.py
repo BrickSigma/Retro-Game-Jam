@@ -287,6 +287,15 @@ class Level:
         self.guardian.flash_timer    = 0
         self.guardian.state          = GuardianState.FOLLOWING
         
+    def _can_use_ability(self) -> bool:
+        """True when a guardian ability may be triggered (charges available or god mode)."""
+        return self.charges > 0 or self.player.god_mode
+
+    def _spend_charge(self):
+        """Consume one charge unless god mode is active."""
+        if not self.player.god_mode:
+            self.charges -= 1
+
     def handle_music(self):
         """
         Used to handle the background music for the game.
@@ -317,7 +326,7 @@ class Level:
                             self.restart()
                         case pygame.K_l:
                             # Platform controls
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
                                     self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
@@ -330,26 +339,26 @@ class Level:
                                     player_vel
                                 )
                                 if spent:
-                                    self.charges -= 1
+                                    self._spend_charge()
                         case pygame.K_k:
                             # Shoot projectile
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 projectile = self.guardian.fire_projectile(
                                     self.player.rect,
                                     self.player.facing_right
                                 )
                                 if projectile is not None:
                                     self.entities.append(projectile)
-                                    self.charges -= 1
+                                    self._spend_charge()
                         case pygame.K_p:
                             # Activate shield
-                            if self.charges > 0 and self.guardian.can_shield:
+                            if self._can_use_ability() and self.guardian.can_shield:
                                 spent = self.guardian.activate_shield()
                                 if spent:
-                                    self.charges -= 1
+                                    self._spend_charge()
                         case pygame.K_o:
                             # Activate bounce pad
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
                                     self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
@@ -362,26 +371,26 @@ class Level:
                                     player_vel
                                 )
                                 if spent:
-                                    self.charges -= 1
+                                    self._spend_charge()
                         case pygame.K_m:
                             # Activate sword
                             if not self.player.wielding_sword:
-                                if self.charges > 0:
+                                if self._can_use_ability():
                                     spent = self.guardian.activate_sword()
                                     if spent:
-                                        self.charges -= 1
+                                        self._spend_charge()
                                         self.player.wielding_sword = True
                         case pygame.K_n:
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 spent = self.guardian.activate_decoy()
                                 if spent:
-                                    self.charges -= 1
+                                    self._spend_charge()
                 
                 case pygame.JOYBUTTONDOWN:
                     match event.button:
                         case 1:  # B Button
                             # Platform controls
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
                                     self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
@@ -394,22 +403,22 @@ class Level:
                                     player_vel
                                 )
                                 if spent:
-                                    self.charges -= 1
+                                    self._spend_charge()
 
                         case 2:  # Right bumper button
                             # Shoot projectile
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 projectile = self.guardian.fire_projectile(
                                     self.player.rect,
                                     self.player.facing_right
                                 )
                                 if projectile is not None:
                                     self.entities.append(projectile)
-                                    self.charges -= 1
+                                    self._spend_charge()
 
                         case 3:  # Y Button
                             # Activate bounce pad
-                            if self.charges > 0:
+                            if self._can_use_ability():
                                 player_airborne = self.player.state in (PlayerState.JUMPING, PlayerState.FALLING)
                                 player_vel = [
                                     self.player.VEL if self.player.moving_right else -self.player.VEL if self.player.moving_left else 0,
@@ -422,30 +431,30 @@ class Level:
                                     player_vel
                                 )
                                 if spent:
-                                    self.charges -= 1
+                                    self._spend_charge()
 
                         case 4:  # Left bumber button
                             # Activate shield
-                            if self.charges > 0 and self.guardian.can_shield:
+                            if self._can_use_ability() and self.guardian.can_shield:
                                 spent = self.guardian.activate_shield()
                                 if spent:
-                                    self.charges -= 1
-                        
+                                    self._spend_charge()
+
                         case 5:  # Right bumber button
                             # Activate sword
                             if not self.player.wielding_sword:
-                                if self.charges > 0:
+                                if self._can_use_ability():
                                     spent = self.guardian.activate_sword()
                                     if spent:
-                                        self.charges -= 1
+                                        self._spend_charge()
                                         self.player.wielding_sword = True
 
                 case pygame.JOYHATMOTION:
                     if event.value[1] == -1:  # D-pad down button
-                        if self.charges > 0:
+                        if self._can_use_ability():
                             spent = self.guardian.activate_decoy()
                             if spent:
-                                self.charges -= 1
+                                self._spend_charge()
 
         tiles_rect = pygame.Rect(
             (self.player.rect.x//Tileset.TILE_SIZE) - 1, 
@@ -524,6 +533,10 @@ class Level:
                 Tileset.render_tile(self.surface, orb, 24 + i, 0)
             else:
                 Tileset.render_tile(self.surface, empty_orb, 24 + i, 0)
+
+        if self.player.god_mode:
+            god_banner = Tileset.change_letter_color(Tileset.render_string("god"), (255, 215, 0))
+            Tileset.render_tile(self.surface, god_banner, 28, 0)
     
         # Draw world layers
         # Legacy layers — drawn first so palette layers render on top during migration
@@ -721,7 +734,7 @@ class Level:
                     if self.player.follow and self.player.follow.shield_active:
                         self.player.follow.break_shield()
                         self.player._invulnerability_timer = self.player.INVULNERABILITY_DURATION
-                    elif self.player._invulnerability_timer <= 0:
+                    elif self.player._invulnerability_timer <= 0 and not self.player.god_mode:
                         self.player.change_state_to(PlayerState.DEAD)
 
             # Handle upgrade jewel collection

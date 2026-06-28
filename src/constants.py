@@ -17,3 +17,5 @@ SCALE = 3                 # Scale to apply to screen for bigger displays
 WINDOW_SIZE = (SCREEN_SIZE[0]*SCALE, SCREEN_SIZE[1]*SCALE)  # Size of the actual window
 
 FPS = 60    # Frame rate
+
+DEBUG = True  # Set to True to enable debug features like god mode toggle
