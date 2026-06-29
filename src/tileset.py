@@ -12,7 +12,7 @@ tileset: None | pygame.Surface = None
 
 _chars = [
     "a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z", 
-    "/", "-", ":", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", " ", "."]
+    "/", "-", ":", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", " ", ".", "!"]
 
 _unused_color = (254, 254, 254)
 """Unused color used for color mapping functions"""
@@ -89,6 +89,7 @@ class TileType(Enum):
     TORCH_5 = 105
     TORCH_6 = 106
     PERIOD = 107
+    EXCLAMATION = 108
 
 def init():
     global tileset
@@ -126,6 +127,10 @@ def get_char(char: str) -> pygame.Surface:
     
     if char == ".":
         surface = get_tile(TileType.PERIOD.value)
+        return surface
+    
+    if char == "!":
+        surface = get_tile(TileType.EXCLAMATION.value)
         return surface
     
     return get_tile(_chars.index(char))

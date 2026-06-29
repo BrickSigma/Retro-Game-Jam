@@ -26,14 +26,27 @@ class Game(Scene):
             Level(
                 self.surface,
                 2, "peaceful.wav",
-                background_layer=True
+                background_layer=True,
+                text_guides=[
+                    Tileset.GuideText("Watch out for ghosts!", (16, 24)),
+                    Tileset.GuideText("Press K to shoot", (16, 40)),
+                    Tileset.GuideText("Spawn a platform", (240, 24)),
+                    Tileset.GuideText("Press L", (240, 40))
+                ],
+                unload_music=False
             ),
-            Level(self.surface, 4, "peaceful.wav", background_layer=True),
+            Level(
+                self.surface, 
+                4, "peaceful.wav", 
+                background_layer=True,
+                text_guides=[
+                    Tileset.GuideText("Good luck!", (16, 24))
+                ]),
             Level(self.surface, 5, "techno.wav", CameraState.VERTICAL, hud_background=(32, 34, 54), background_layer=False),
             Level(self.surface, 6, "difficult.wav", background_layer=True)
         ]
 
-        self.current_level = 1
+        self.current_level = 0
         self.level = self.levels[self.current_level]
 
     def reset(self):
