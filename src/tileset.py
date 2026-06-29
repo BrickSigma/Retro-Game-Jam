@@ -188,5 +188,5 @@ class TextBox:
 
 class GuideText:
     def __init__(self, text: str, pos: tuple[int, int]):
-        self.text_surf = render_string(text)
+        self.text_surf = change_letter_color(render_string(text), LIGHT_BLUE)
         self.pos = list(pos)
