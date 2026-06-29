@@ -3,30 +3,10 @@ Controls screen
 """
 
 from src.scenes import Scene, SceneState
-import src.tileset as Tileset
+from src.tileset import TextBox, GREY, LIGHT_BLUE
 import pygame
 
 from src.constants import resource_path
-
-LIGHT_BLUE = (203, 219, 252)
-GREY = (104, 111, 153)
-
-class TextBox:
-    def __init__(self, 
-                 text: str, 
-                 x: int, 
-                 y: int, 
-                 x_offset: int = 4, 
-                 y_offset: int = 4,
-                 color: tuple[int, int, int] = LIGHT_BLUE):
-        self.surface = Tileset.change_letter_color(Tileset.render_string(text), color)
-        self.x = x
-        self.y = y
-        self.x_offset = x_offset
-        self.y_offset = y_offset
-
-    def draw(self, dest: pygame.Surface):
-        Tileset.render_tile(dest, self.surface, self.x, self.y, self.x_offset, self.y_offset)
 
 class Controls(Scene):
     def __init__(self, surface):

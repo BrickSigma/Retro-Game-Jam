@@ -12,7 +12,7 @@ tileset: None | pygame.Surface = None
 
 _chars = [
     "a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z", 
-    "/", "-", ":", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", " ", "|"]
+    "/", "-", ":", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", " ", "."]
 
 _unused_color = (254, 254, 254)
 """Unused color used for color mapping functions"""
@@ -88,7 +88,7 @@ class TileType(Enum):
     TORCH_4 = 104
     TORCH_5 = 105
     TORCH_6 = 106
-    BAR_LINE = 107
+    PERIOD = 107
 
 def init():
     global tileset
@@ -124,8 +124,8 @@ def get_char(char: str) -> pygame.Surface:
         surface = pygame.Surface((8, 8), pygame.SRCALPHA)
         return surface
     
-    if char == "|":
-        surface = get_tile(TileType.BAR_LINE.value)
+    if char == ".":
+        surface = get_tile(TileType.PERIOD.value)
         return surface
     
     return get_tile(_chars.index(char))
@@ -165,6 +165,26 @@ def change_letter_color(tile: pygame.Surface, color: tuple[int, int, int]) -> py
     This essentially converts any white pixels to the new color.
     """
     return swap_color(tile, (255, 255, 255), color)
+
+LIGHT_BLUE = (203, 219, 252)
+GREY = (104, 111, 153)
+
+class TextBox:
+    def __init__(self, 
+                 text: str, 
+                 x: int, 
+                 y: int, 
+                 x_offset: int = 4, 
+                 y_offset: int = 4,
+                 color: tuple[int, int, int] = LIGHT_BLUE):
+        self.surface = change_letter_color(render_string(text), color)
+        self.x = x
+        self.y = y
+        self.x_offset = x_offset
+        self.y_offset = y_offset
+
+    def draw(self, dest: pygame.Surface):
+        render_tile(dest, self.surface, self.x, self.y, self.x_offset, self.y_offset)
 
 class GuideText:
     def __init__(self, text: str, pos: tuple[int, int]):
