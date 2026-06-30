@@ -91,7 +91,7 @@ class Level:
         self.background_layer: pygame.Surface | None = None
 
         if background_layer:
-            self.background_layer = pygame.image.load(resource_path(f"{self.level_folder}/../background.png"))
+            self.background_layer = pygame.image.load(resource_path("assets/levels/background.png"))
 
         # Used to unload the music when going to another level
         self.unload_music = unload_music
@@ -145,9 +145,17 @@ class Level:
         self.orb = Tileset.change_letter_color(Tileset.get_tile(TileType.JEWEL.value), self.LIGHT_BLUE)
         self.empty_orb = Tileset.swap_color(self.orb, self.LIGHT_BLUE, (104, 111, 153))
         
+        # Upgrades carried in from the previous level — restored on death
+        self.banked_upgrades: dict | None = None
+
         # restart() called last - player and guardian are ready
         self.restart()
         
+
+    def apply_banked_upgrades(self, upgrades: dict):
+        """Apply carry-over upgrades from the previous level. Restored on death."""
+        self.banked_upgrades = upgrades
+        self.guardian.apply_upgrade_state(upgrades)
 
     def restart(self):
         """
@@ -161,6 +169,7 @@ class Level:
         self.arena_locked    = False
         self._credits_timer  = 0
         self._checkpoint_data = None  # full restart clears checkpoint
+        self.banked_upgrades  = None  # full restart clears carried upgrades
         self.camera.unlock()
 
         # Reset all guardian upgrades on full restart
@@ -255,6 +264,10 @@ class Level:
         self.guardian.flash_timer    = 0
         self.guardian.state          = GuardianState.FOLLOWING
 
+        # Restore upgrades earned by completing previous levels
+        if self.banked_upgrades:
+            self.guardian.apply_upgrade_state(self.banked_upgrades)
+
     def _save_checkpoint(self, entity: 'Checkpoint'):
         """Snapshot the current player/guardian state when a checkpoint is touched."""
         self._checkpoint_data = {
@@ -313,7 +326,7 @@ class Level:
             return  # Do nothing if it's already playing a track
         
         if self._checkpoint_data is not None:
-            pygame.mixer.music.load(f"{self.music_folder}/boss.mp3")
+            pygame.mixer.music.load(f"{self.music_folder}/boss.ogg")
         else:
             pygame.mixer.music.load(f"{self.music_folder}/{self.music_file}")
             

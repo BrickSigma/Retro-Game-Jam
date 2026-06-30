@@ -23,7 +23,7 @@ class Jewel(Entity):
             speed=20
         )
 
-        self.COLLECTED_SFX = pygame.mixer.Sound(resource_path("assets/sfx/collectable.wav"))
+        self.COLLECTED_SFX = pygame.mixer.Sound(resource_path("assets/sfx/collectable.ogg"))
         self.COLLECTED_SFX.set_volume(0.4)
 
     def update(self, player_rect: pygame.Rect):

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import Enum, auto, unique
 import pygame
 from math import sqrt, sin, pi
@@ -144,19 +145,19 @@ class Player:
 
         # Player SFX objects
         self.WALKING_SFX = [
-            pygame.mixer.Sound(resource_path("assets/sfx/footstep1.wav")),
-            pygame.mixer.Sound(resource_path("assets/sfx/footstep2.wav"))]
+            pygame.mixer.Sound(resource_path("assets/sfx/footstep1.ogg")),
+            pygame.mixer.Sound(resource_path("assets/sfx/footstep2.ogg"))]
         
         for sfx in self.WALKING_SFX:
             sfx.set_volume(0.4)
         
-        self.JUMP_SFX = pygame.mixer.Sound(resource_path("assets/sfx/jump.wav"))
+        self.JUMP_SFX = pygame.mixer.Sound(resource_path("assets/sfx/jump.ogg"))
         self.JUMP_SFX.set_volume(0.4)
 
-        self.LANDING_SFX = pygame.mixer.Sound(resource_path("assets/sfx/landing.wav"))
+        self.LANDING_SFX = pygame.mixer.Sound(resource_path("assets/sfx/landing.ogg"))
         self.LANDING_SFX.set_volume(0.2)
 
-        self.DEATH_SFX = pygame.mixer.Sound(resource_path("assets/sfx/player death.wav"))
+        self.DEATH_SFX = pygame.mixer.Sound(resource_path("assets/sfx/player death.ogg"))
         self.DEATH_SFX.set_volume(0.4)
         
     

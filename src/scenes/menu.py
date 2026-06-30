@@ -38,7 +38,7 @@ class Menu(Scene):
         if pygame.mixer.music.get_busy():
             return  # Do nothing if it's already playing a track
         
-        pygame.mixer.music.load(resource_path("assets/music/peaceful.wav"))
+        pygame.mixer.music.load(resource_path("assets/music/peaceful.ogg"))
             
         pygame.mixer.music.set_volume(0.2)
         pygame.mixer.music.play(fade_ms=2000)

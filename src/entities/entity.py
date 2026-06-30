@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pygame
 import src.tileset as Tileset
 from src.tileset import TILE_SIZE, TileType

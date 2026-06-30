@@ -22,7 +22,7 @@ class GameOver(Scene):
         self.joystick_delay = 0
 
     def play_music(self):
-        pygame.mixer.music.load(resource_path("assets/music/game-over.mp3"))
+        pygame.mixer.music.load(resource_path("assets/music/game-over.ogg"))
         pygame.mixer.music.play(1)
     
     def update(self, events) -> SceneState:

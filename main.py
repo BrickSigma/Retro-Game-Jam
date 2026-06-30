@@ -1,5 +1,10 @@
+# /// script
+# dependencies = ["pytmx"]
+# ///
+
 import pygame
 import asyncio
+import pytmx
 
 from src.constants import *
 import src.gamepad as Gamepad
@@ -7,17 +12,19 @@ import src.tileset as Tileset
 from src.scenes import *
 
 async def main():
-    # pygame setup
+    print("[init] starting")
+    pygame.mixer.pre_init(44100, -16, 2, 512)
     pygame.init()
-    pygame.mixer.pre_init()
+    print("[init] pygame.init done")
     screen = pygame.display.set_mode(WINDOW_SIZE, flags=pygame.RESIZABLE)
-    clock = pygame.time.Clock() # Clock used to handle frame rate
-
+    clock = pygame.time.Clock()
     canvas = pygame.Surface(SCREEN_SIZE)
 
+    print("[init] loading tileset")
     Tileset.init()
     Gamepad.init()
-    
+
+    print("[init] creating scenes")
     scenes = [
         Menu(canvas),
         Controls(canvas),
@@ -25,6 +32,7 @@ async def main():
         Credits(canvas),
         GameOver(canvas)
     ]
+    print("[init] all scenes ready")
 
     #current_scene = Menu(canvas)
     current_scene = 0

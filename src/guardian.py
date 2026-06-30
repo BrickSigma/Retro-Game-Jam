@@ -83,7 +83,7 @@ class Guardian:
         self._decoy_facing_right = True
 
         # SFX
-        self.FIRE_SFX = pygame.mixer.Sound(resource_path("assets/sfx/fire.mp3"))
+        self.FIRE_SFX = pygame.mixer.Sound(resource_path("assets/sfx/fire.ogg"))
         self.FIRE_SFX.set_volume(0.4)
     
     def _get_platform_pos(self, player_rect: pygame.Rect, facing_right: bool, player_airborne: bool, player_vel: list) -> tuple[int, int]:
@@ -323,6 +323,24 @@ class Guardian:
         self.state = GuardianState.BOUNCE_PAD
         self._platform_timer = FPS * 3  # disappears after 3 seconds or first bounce
         return True
+
+    def get_upgrade_state(self) -> dict:
+        return {
+            'upgraded_l2':    self.upgraded_l2,
+            'upgraded_l3':    self.upgraded_l3,
+            'can_shield':     self.can_shield,
+            'can_bounce_pad': self.can_bounce_pad,
+            'can_use_sword':  self.can_use_sword,
+            'can_use_decoy':  self.can_use_decoy,
+        }
+
+    def apply_upgrade_state(self, state: dict):
+        self.upgraded_l2    = state['upgraded_l2']
+        self.upgraded_l3    = state['upgraded_l3']
+        self.can_shield     = state['can_shield']
+        self.can_bounce_pad = state['can_bounce_pad']
+        self.can_use_sword  = state['can_use_sword']
+        self.can_use_decoy  = state['can_use_decoy']
 
     def fire_projectile(self, player_rect: pygame.Rect, facing_right: bool) -> 'Projectile':
         """
