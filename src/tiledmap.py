@@ -98,7 +98,7 @@ class TiledMap:
         """
         try:
             return self.layers[layer]
-        except:
+        except KeyError:
             return None
     
     def get_tiles(self, layer: str) -> Tiles | None:

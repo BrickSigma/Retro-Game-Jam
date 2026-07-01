@@ -107,6 +107,7 @@ class Player:
         self._invulnerability_timer = 0
 
         self.in_web = False
+        self._on_bounce_pad = False
 
         self._swing_timer  = 0
         self.sword_rect    = None

@@ -25,4 +25,6 @@ class Animator:
         self._index = 0
 
     def get_frame(self) -> pygame.Surface:
+        if not self.frames:
+            return pygame.Surface((8, 8), pygame.SRCALPHA)
         return Tileset.get_tile(self.frames[self._index])

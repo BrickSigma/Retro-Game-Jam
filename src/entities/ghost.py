@@ -46,6 +46,7 @@ class Ghost(Entity):
 
         self.hits = 0
         self.stun_timer = 0
+        self.death_timer = 0
         self.collected = False  # True when hit twice, removed by level.py
         self.distracted = False  # True while decoy is active
 
@@ -185,6 +186,8 @@ class Ghost(Entity):
 
     def hit(self):
         """Called when a projectile hits the ghost"""
+        if self.state == GhostState.DYING or self.collected:
+            return  # already dying — don't reset death_timer or double-count hits
         self.hits += 1
         if self.hits >= 2:
             self.state = GhostState.DYING  # play death effect first

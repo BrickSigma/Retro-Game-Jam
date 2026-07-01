@@ -57,6 +57,7 @@ class Game(Scene):
 
     def reset(self):
         for level in self.levels:
+            level._checkpoint_data = None  # full menu reset clears all checkpoints
             level.restart()
 
         self.current_level = 0

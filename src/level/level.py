@@ -168,7 +168,10 @@ class Level:
         self.boss_defeated   = False
         self.arena_locked    = False
         self._credits_timer  = 0
-        self._checkpoint_data = None  # full restart clears checkpoint
+        # _checkpoint_data intentionally NOT cleared here — preserve the last
+        # checkpoint across game over so the player retries from the checkpoint
+        # (e.g. before the boss) rather than the level start.
+        # It is only set to None in __init__ on a fresh level load.
         self.banked_upgrades  = None  # full restart clears carried upgrades
         self.camera.unlock()
 
@@ -184,7 +187,18 @@ class Level:
 
         self.entities = self.tilemap.get_entities()
         self.entities = [e for e in self.entities if e.type != EntityType.PLAYER]
-        self._respawn_player()
+
+        if self._checkpoint_data:
+            self._respawn_at_checkpoint()
+            # Re-activate the checkpoint entity so it stays gold after respawn
+            for entity in self.entities:
+                if (isinstance(entity, Checkpoint)
+                        and entity.x == self._checkpoint_data['x']
+                        and entity.y == self._checkpoint_data['y']):
+                    entity.activated = True
+                    break
+        else:
+            self._respawn_player()
 
     def respawn(self):
         """
